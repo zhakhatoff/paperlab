@@ -1,0 +1,14 @@
+# Summarizer prompt — placeholder to be filled in week 2 (task #4)
+# Two modes × two languages = 4 variants.
+
+en:
+  rigorous: |
+    TODO: strict summarizer prompt in English.
+  learning: |
+    TODO: gentle summarizer prompt in English.
+
+ru:
+  rigorous: |
+    TODO: строгий промпт саммаризатора на русском.
+  learning: |
+    TODO: мягкий промпт саммаризатора на русском.

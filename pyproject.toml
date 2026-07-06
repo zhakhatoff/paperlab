@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paperlab"
+version = "0.1.0"
+description = "Multi-agent LLM tool for critically reading biomedical and pharmacology research papers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Shokan Zhakhat", email = "shokan04jakat@gmail.com" }]
+keywords = ["biomedical", "pharmacology", "llm", "agents", "research", "pdf", "science"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+dependencies = [
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    "docling>=2.0.0",
+    "paper-qa>=5.0.0",
+    "langgraph>=0.2.0",
+    "litellm>=1.50.0",
+    "gradio>=5.0.0",
+    "pydantic>=2.8.0",
+    "tomli-w>=1.0.0",
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+]
+
+[project.scripts]
+paperlab = "paperlab.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/zhakhatoff/paperlab"
+Repository = "https://github.com/zhakhatoff/paperlab"
+Issues = "https://github.com/zhakhatoff/paperlab/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/paperlab"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
