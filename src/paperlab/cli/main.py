@@ -149,9 +149,17 @@ def show(
 
 @app.command()
 def web() -> None:
-    """Launch the local web dashboard (coming in phase 8)."""
-    typer.echo("web: not implemented yet — coming in phase 8")
-    raise typer.Exit(code=1)
+    """Launch the local Gradio web dashboard."""
+    try:
+        from paperlab.web import launch
+    except ImportError as exc:
+        typer.echo(
+            f"Could not import paperlab.web: {exc}\n"
+            "Install the web extras: pip install paperlab[web]",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    launch()
 
 
 # ---------------------------------------------------------------------------
