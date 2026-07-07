@@ -47,9 +47,9 @@ dev = [
 paperlab = "paperlab.cli.main:app"
 
 [project.urls]
-Homepage = "https://github.com/paperlab/paperlab"
-Repository = "https://github.com/paperlab/paperlab"
-Issues = "https://github.com/paperlab/paperlab/issues"
+Homepage = "https://github.com/zhakhatoff/paperlab"
+Repository = "https://github.com/zhakhatoff/paperlab"
+Issues = "https://github.com/zhakhatoff/paperlab/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/paperlab"]
