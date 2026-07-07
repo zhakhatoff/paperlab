@@ -177,8 +177,6 @@ def web(
         server_port=port,
         inbrowser=not no_browser,
         share=share,
-        show_api=False,
-        quiet=False,
     )
 
 

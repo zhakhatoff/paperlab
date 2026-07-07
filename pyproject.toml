@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "paperlab"
-version = "0.1.2"
+version = "0.1.3"
 description = "Multi-agent LLM tool for critically reading biomedical and pharmacology research papers"
 readme = "README.md"
 requires-python = ">=3.11"
