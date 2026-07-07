@@ -26,12 +26,39 @@ Two output languages: English or Russian.
 
 ### Install
 
+Requires Python 3.11 or 3.12. Python 3.14 is not yet supported (some transitive dependencies do not build on 3.14).
+
 ```bash
-pipx install paperlab
+pipx install --python python3.12 paperlab
 paperlab init
 ```
 
+Alternative — install with pip inside a project venv:
+
+```bash
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install paperlab
+paperlab init
+```
+
+Install from source:
+
+```bash
+git clone https://github.com/zhakhatoff/paperlab.git
+cd paperlab
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+paperlab --help
+```
+
 `paperlab init` creates `~/.paperlab/` with a default `config.toml` and a `sessions/` subdirectory. Run with `--force` to overwrite an existing config.
+
+**pipx broken on Python 3.14?** If `pipx install` fails with `ensurepip` errors, your pipx shared venv is running on Python 3.14. Pin it to 3.12:
+
+```bash
+rm -rf ~/.local/pipx/shared
+PIPX_DEFAULT_PYTHON=$(brew --prefix python@3.12)/bin/python3.12 pipx ensurepath
+```
 
 ### Use
 
@@ -108,9 +135,36 @@ MIT
 
 ### Установка
 
+Требуется Python 3.11 или 3.12. Python 3.14 пока не поддерживается (часть транзитивных зависимостей не собирается на 3.14).
+
 ```bash
-pipx install paperlab
+pipx install --python python3.12 paperlab
 paperlab init
+```
+
+Или через pip в проектном venv:
+
+```bash
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install paperlab
+paperlab init
+```
+
+Из исходников:
+
+```bash
+git clone https://github.com/zhakhatoff/paperlab.git
+cd paperlab
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+paperlab --help
+```
+
+**pipx падает на Python 3.14?** Если `pipx install` валится с ошибкой про `ensurepip`, у pipx общий venv на Python 3.14. Перегони его на 3.12:
+
+```bash
+rm -rf ~/.local/pipx/shared
+PIPX_DEFAULT_PYTHON=$(brew --prefix python@3.12)/bin/python3.12 pipx ensurepath
 ```
 
 Команда `paperlab init` создаёт `~/.paperlab/` с дефолтным `config.toml` и поддиректорией `sessions/`. Флаг `--force` перезаписывает существующий конфиг.

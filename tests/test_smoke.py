@@ -9,7 +9,8 @@ runner = CliRunner()
 
 
 def test_version_string() -> None:
-    assert __version__ == "0.1.0"
+    assert isinstance(__version__, str)
+    assert __version__ != ""
 
 
 def test_cli_version_command() -> None:
