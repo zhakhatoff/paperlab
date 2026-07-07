@@ -31,32 +31,46 @@ pipx install paperlab
 paperlab init
 ```
 
-`paperlab init` will:
-1. Detect or install Ollama (default local backend)
-2. Pull a default model (qwen2.5:7b, or llama3.2:3b for weaker machines)
-3. Optionally start GROBID via Docker for better reference extraction
-4. Save your config to `~/.paperlab/config.toml`
+`paperlab init` creates `~/.paperlab/` with a default `config.toml` and a `sessions/` subdirectory. Run with `--force` to overwrite an existing config.
 
 ### Use
 
 ```bash
 paperlab read paper.pdf --mode rigorous --lang en
-paperlab read paper.pdf --mode learning --lang ru
+paperlab read paper.pdf --mode learning --lang ru --provider ollama --model qwen2.5:7b
 paperlab list                    # your review history
 paperlab show <session-id>       # revisit a past review
-paperlab web                     # open the browser dashboard
+paperlab web                     # open the browser dashboard (phase 8)
+```
+
+Output format:
+
+```bash
+paperlab read paper.pdf --format markdown          # default
+paperlab read paper.pdf --format json --output report.json
 ```
 
 ### Providers
 
 paperlab uses [LiteLLM](https://github.com/BerriAI/litellm) under the hood, so any of these work out of the box:
 
-- **Ollama** (local, default, free)
-- **OpenRouter** (unified access to GPT, Claude, Gemini, Llama, etc.)
-- **Together, Groq, Gemini, Anthropic, OpenAI**
-- **Custom OpenAI-compatible endpoint** (your university's GPU cluster, etc.)
+- `ollama` (local, default, free)
+- `openrouter` (unified access to GPT, Claude, Gemini, Llama, etc.)
+- `together`, `groq`, `gemini`, `anthropic`, `openai`
+- `custom` (any OpenAI-compatible endpoint, e.g. your university's GPU cluster)
 
-Switch with `paperlab config set provider ollama` or via the web UI.
+Switch with `paperlab config set provider ollama` or pass `--provider` per invocation.
+
+### Config
+
+```bash
+paperlab config get provider          # print current value
+paperlab config set provider openai   # update config.toml
+paperlab config set model gpt-4o
+paperlab config set extra.base_url http://localhost:11434
+```
+
+Config is stored in `~/.paperlab/config.toml` (or `$PAPERLAB_HOME/config.toml`).
 
 ### Privacy
 
@@ -99,32 +113,46 @@ pipx install paperlab
 paperlab init
 ```
 
-Команда `paperlab init` сделает:
-1. Найдёт или установит Ollama (локальный бэкенд по умолчанию)
-2. Скачает модель (qwen2.5:7b, или llama3.2:3b для слабых машин)
-3. Опционально поднимет GROBID через Docker для лучшего извлечения ссылок
-4. Сохранит конфиг в `~/.paperlab/config.toml`
+Команда `paperlab init` создаёт `~/.paperlab/` с дефолтным `config.toml` и поддиректорией `sessions/`. Флаг `--force` перезаписывает существующий конфиг.
 
 ### Использование
 
 ```bash
 paperlab read paper.pdf --mode rigorous --lang ru
-paperlab read paper.pdf --mode learning --lang en
+paperlab read paper.pdf --mode learning --lang en --provider ollama --model qwen2.5:7b
 paperlab list                    # история разборов
 paperlab show <session-id>       # открыть прошлый разбор
-paperlab web                     # веб-интерфейс в браузере
+paperlab web                     # веб-интерфейс в браузере (фаза 8)
+```
+
+Формат вывода:
+
+```bash
+paperlab read paper.pdf --format markdown          # по умолчанию
+paperlab read paper.pdf --format json --output report.json
 ```
 
 ### Провайдеры
 
 Работает с любым из этих без изменений в коде:
 
-- **Ollama** (локально, по умолчанию, бесплатно)
-- **OpenRouter** (единый доступ к GPT, Claude, Gemini, Llama и т.д.)
-- **Together, Groq, Gemini, Anthropic, OpenAI**
-- **Свой OpenAI-совместимый endpoint** (например, GPU-кластер университета)
+- `ollama` (локально, по умолчанию, бесплатно)
+- `openrouter` (единый доступ к GPT, Claude, Gemini, Llama и т.д.)
+- `together`, `groq`, `gemini`, `anthropic`, `openai`
+- `custom` (любой OpenAI-совместимый endpoint)
 
-Переключение: `paperlab config set provider ollama` или через веб-UI.
+Переключение: `paperlab config set provider ollama` или флаг `--provider` при запуске.
+
+### Конфигурация
+
+```bash
+paperlab config get provider          # показать текущее значение
+paperlab config set provider openai   # обновить config.toml
+paperlab config set model gpt-4o
+paperlab config set extra.base_url http://localhost:11434
+```
+
+Конфиг хранится в `~/.paperlab/config.toml` (или `$PAPERLAB_HOME/config.toml`).
 
 ### Приватность
 
