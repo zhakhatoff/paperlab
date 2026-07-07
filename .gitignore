@@ -32,7 +32,8 @@ htmlcov/
 
 # paperlab runtime data (should live in ~/.paperlab, not the repo)
 .paperlab/
-sessions/
+# Ignore top-level sessions/ dir (runtime data), but not src/tests subdirectories
+/sessions/
 *.jsonl.bak
 
 # scratch and experiments
