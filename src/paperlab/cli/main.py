@@ -148,10 +148,15 @@ def show(
 
 
 @app.command()
-def web() -> None:
+def web(
+    port: int = typer.Option(7860, help="Port to bind"),
+    host: str = typer.Option("127.0.0.1", help="Host to bind"),
+    no_browser: bool = typer.Option(False, "--no-browser", help="Don't auto-open the browser"),
+    share: bool = typer.Option(False, "--share", help="Create a public Gradio share link"),
+) -> None:
     """Launch the local Gradio web dashboard."""
     try:
-        from paperlab.web import launch
+        from paperlab.web import build_app
     except ImportError as exc:
         typer.echo(
             f"Could not import paperlab.web: {exc}\n"
@@ -159,7 +164,22 @@ def web() -> None:
             err=True,
         )
         raise typer.Exit(code=1) from None
-    launch()
+
+    url = f"http://{host}:{port}"
+    console.print(f"[green]paperlab web[/green] starting at [cyan]{url}[/cyan]")
+    console.print(
+        "[dim]First launch takes a few seconds while Gradio warms up. Ctrl+C to stop.[/dim]"
+    )
+
+    gradio_app = build_app()
+    gradio_app.launch(
+        server_name=host,
+        server_port=port,
+        inbrowser=not no_browser,
+        share=share,
+        show_api=False,
+        quiet=False,
+    )
 
 
 # ---------------------------------------------------------------------------
