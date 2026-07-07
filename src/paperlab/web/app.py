@@ -1,4 +1,5 @@
 """paperlab Gradio web dashboard."""
+
 from __future__ import annotations
 
 import asyncio

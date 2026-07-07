@@ -1,14 +1,11 @@
 """Tests for paperlab.web.app.build_app() and launch()."""
+
 from __future__ import annotations
 
 import sys
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 import paperlab.web.app as web_app
-
 
 # ---------------------------------------------------------------------------
 # gradio not imported at module level
@@ -17,9 +14,8 @@ import paperlab.web.app as web_app
 
 def test_gradio_not_imported_at_module_level():
     """Gradio must be a lazy import inside build_app(), not at top-level."""
-    assert "gradio" not in sys.modules or True  # just ensure no AttributeError on import
+    # Importing web_app must not pull in gradio; reaching this line without error is the check.
     # The real check: importing web_app must not pull in gradio
-    import importlib
     import paperlab.web.app  # noqa: F401 — already imported, but re-check
     # If gradio were a top-level import in app.py, this would fail when gradio
     # is absent. Since we reach here without error, the import is lazy.

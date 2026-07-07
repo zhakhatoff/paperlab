@@ -28,13 +28,9 @@ def load_prompt(agent_name: str, mode: str, lang: str) -> dict:
         raise FileNotFoundError(f"No prompt file found for agent '{agent_name}': {yaml_path}")
 
     if lang not in _VALID_LANGS:
-        raise ValueError(
-            f"Invalid lang '{lang}'. Valid values for lang: {sorted(_VALID_LANGS)}"
-        )
+        raise ValueError(f"Invalid lang '{lang}'. Valid values for lang: {sorted(_VALID_LANGS)}")
     if mode not in _VALID_MODES:
-        raise ValueError(
-            f"Invalid mode '{mode}'. Valid values for mode: {sorted(_VALID_MODES)}"
-        )
+        raise ValueError(f"Invalid mode '{mode}'. Valid values for mode: {sorted(_VALID_MODES)}")
 
     with yaml_path.open(encoding="utf-8") as fh:
         data = yaml.safe_load(fh)
@@ -43,8 +39,7 @@ def load_prompt(agent_name: str, mode: str, lang: str) -> dict:
         entry = data[lang][mode]
     except KeyError as exc:
         raise ValueError(
-            f"Missing key in {yaml_path.name}: {exc}. "
-            f"Expected lang='{lang}', mode='{mode}'."
+            f"Missing key in {yaml_path.name}: {exc}. Expected lang='{lang}', mode='{mode}'."
         ) from exc
 
     return {"system": entry["system"], "user_template": entry["user_template"]}

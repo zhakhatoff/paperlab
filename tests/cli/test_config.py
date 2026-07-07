@@ -1,7 +1,6 @@
 """Tests for paperlab.cli.config."""
-from __future__ import annotations
 
-from pathlib import Path
+from __future__ import annotations
 
 import pytest
 

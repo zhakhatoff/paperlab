@@ -47,7 +47,7 @@ def _parse_json(raw: str) -> tuple[dict, str | None]:
         except json.JSONDecodeError:
             pass
 
-    return {}, f"JSON parse error: could not extract a JSON object from raw response"
+    return {}, "JSON parse error: could not extract a JSON object from raw response"
 
 
 class Agent:

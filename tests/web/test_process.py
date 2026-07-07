@@ -1,14 +1,12 @@
 """Tests for paperlab.web.app.process()."""
+
 from __future__ import annotations
 
 import json
 
-import pytest
-
 import paperlab.web.app as web_app
 from paperlab.ingest import IngestedPaper
 from paperlab.providers.fake import FakeProvider
-
 
 # ---------------------------------------------------------------------------
 # helpers

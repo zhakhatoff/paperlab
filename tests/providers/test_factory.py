@@ -1,9 +1,10 @@
 """Tests for providers.factory.make_provider."""
+
 from __future__ import annotations
 
 import pytest
 
-from paperlab.providers import FakeProvider, LiteLLMProvider, make_provider, SUPPORTED_PROVIDERS
+from paperlab.providers import SUPPORTED_PROVIDERS, FakeProvider, LiteLLMProvider, make_provider
 
 
 def test_make_provider_fake_returns_fake_provider():

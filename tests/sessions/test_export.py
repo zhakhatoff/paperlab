@@ -1,10 +1,9 @@
 """Tests for paperlab.sessions.export."""
+
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from paperlab.agents import AgentReport
 from paperlab.ingest import IngestedPaper
@@ -64,7 +63,7 @@ def _make_report(with_error: bool = False) -> ReviewReport:
         lang="en",
         model="fake",
         session_id="testxyz",
-        created_at=datetime.now(timezone.utc).isoformat(),
+        created_at=datetime.now(UTC).isoformat(),
         agents=agents,
     )
 

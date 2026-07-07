@@ -1,4 +1,5 @@
 """Export ReviewReport to JSON or Markdown."""
+
 from __future__ import annotations
 
 import json

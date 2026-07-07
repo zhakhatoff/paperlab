@@ -1,6 +1,6 @@
 import asyncio
 import json
-import pytest
+
 from paperlab.providers import FakeProvider
 
 

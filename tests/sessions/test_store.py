@@ -1,10 +1,8 @@
 """Tests for paperlab.sessions.store."""
+
 from __future__ import annotations
 
-import json
-import os
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,7 +10,6 @@ from paperlab.agents import AgentReport
 from paperlab.ingest import IngestedPaper
 from paperlab.orchestrator import ReviewReport
 from paperlab.sessions import (
-    SessionSummary,
     default_sessions_dir,
     list_sessions,
     load_report,
@@ -27,7 +24,7 @@ def _make_report(
     with_error: bool = False,
 ) -> ReviewReport:
     if created_at is None:
-        created_at = datetime.now(timezone.utc).isoformat()
+        created_at = datetime.now(UTC).isoformat()
     paper = IngestedPaper(
         source_path="/tmp/test.pdf",
         title=title,
@@ -86,6 +83,7 @@ def _make_report(
 
 # --- default_sessions_dir ---
 
+
 def test_default_sessions_dir_with_env(monkeypatch, tmp_path):
     monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
     result = default_sessions_dir()
@@ -99,6 +97,7 @@ def test_default_sessions_dir_without_env(monkeypatch):
 
 
 # --- save / list / load round-trip ---
+
 
 def test_save_list_load_round_trip(tmp_path):
     report = _make_report(session_id="roundtrip01")

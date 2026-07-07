@@ -1,8 +1,9 @@
 import asyncio
 import sys
 import types
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 
 def _make_fake_litellm(content="hi", raise_exc=None):

@@ -1,4 +1,5 @@
 """Factory function for creating LLM providers by name."""
+
 from __future__ import annotations
 
 from paperlab.providers.base import LLMProvider
@@ -37,7 +38,4 @@ def make_provider(name: str) -> LLMProvider:
         return FakeProvider()
     if name in _LITELLM_PROVIDERS:
         return LiteLLMProvider()
-    raise ValueError(
-        f"Unknown provider {name!r}. supported: "
-        + ", ".join(SUPPORTED_PROVIDERS)
-    )
+    raise ValueError(f"Unknown provider {name!r}. supported: " + ", ".join(SUPPORTED_PROVIDERS))

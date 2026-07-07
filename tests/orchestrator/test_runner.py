@@ -1,8 +1,10 @@
 """Tests for paperlab.orchestrator.runner."""
+
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
-from datetime import datetime, timezone
 
 from paperlab.agents import ALL_AGENTS
 from paperlab.ingest import IngestedPaper

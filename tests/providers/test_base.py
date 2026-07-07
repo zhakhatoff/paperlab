@@ -1,5 +1,6 @@
 import pytest
-from paperlab.providers import LLMProvider, ProviderError
+
+from paperlab.providers import LLMProvider
 
 
 def test_llmprovider_is_abstract():
@@ -22,5 +23,6 @@ def test_minimal_subclass_works():
 
     m = Minimal()
     import asyncio
+
     result = asyncio.run(m.complete("sys", "user", "model"))
     assert result == "ok"

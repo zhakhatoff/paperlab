@@ -2,9 +2,8 @@
 
 import pytest
 
+from paperlab.agents import SummarizerAgent
 from paperlab.providers.fake import FakeProvider
-from paperlab.agents import AgentReport, SummarizerAgent
-
 
 CLEAN_JSON = '{"claims":["a"],"findings":[],"limitations_stated":[]}'
 GARBAGE = "total garbage no json"

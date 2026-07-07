@@ -1,10 +1,10 @@
 """paperlab CLI entrypoint."""
+
 from __future__ import annotations
 
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -57,7 +57,7 @@ def init(
     force: bool = typer.Option(False, "--force", help="Overwrite existing config."),
 ) -> None:
     """Create ~/.paperlab with config.toml and sessions/."""
-    from paperlab.cli.config import PaperlabConfig, default_home, default_config_path, save_config
+    from paperlab.cli.config import PaperlabConfig, default_config_path, default_home, save_config
 
     home = default_home()
     sessions_dir = home / "sessions"
@@ -79,12 +79,12 @@ def init(
 @app.command()
 def read(
     paper: Path = typer.Argument(..., help="Path to the PDF file"),
-    mode: Optional[str] = typer.Option(None, help="rigorous | learning"),
-    lang: Optional[str] = typer.Option(None, help="en | ru"),
-    model: Optional[str] = typer.Option(None, help="Override the configured model"),
-    provider: Optional[str] = typer.Option(None, help="Provider name"),
+    mode: str | None = typer.Option(None, help="rigorous | learning"),
+    lang: str | None = typer.Option(None, help="en | ru"),
+    model: str | None = typer.Option(None, help="Override the configured model"),
+    provider: str | None = typer.Option(None, help="Provider name"),
     format: str = typer.Option("markdown", help="markdown | json"),
-    output: Optional[Path] = typer.Option(None, help="Write report to file"),
+    output: Path | None = typer.Option(None, help="Write report to file"),
 ) -> None:
     """Run the multi-agent review on a paper."""
     from paperlab.cli.config import load_config
@@ -158,7 +158,7 @@ def web() -> None:
             "Install the web extras: pip install paperlab[web]",
             err=True,
         )
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     launch()
 
 
@@ -179,7 +179,7 @@ def config_get(
         value = get_field(cfg, key)
     except KeyError:
         typer.echo(f"Unknown key: {key}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     typer.echo(value)
 
 
@@ -189,14 +189,14 @@ def config_set(
     value: str = typer.Argument(..., help="New value"),
 ) -> None:
     """Set a config key to a new value."""
-    from paperlab.cli.config import get_field, load_config, save_config, set_field
+    from paperlab.cli.config import load_config, save_config, set_field
 
     cfg = load_config()
     try:
         cfg = set_field(cfg, key, value)
     except KeyError:
         typer.echo(f"Unknown key: {key}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
     save_config(cfg)
     typer.echo(f"{key} = {value}")
 

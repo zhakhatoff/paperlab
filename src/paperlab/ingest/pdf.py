@@ -1,8 +1,8 @@
 """PDF text extraction for paperlab."""
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -13,13 +13,13 @@ class IngestError(Exception):
 
 class IngestedPaper(BaseModel):
     source_path: str
-    title: Optional[str] = None
+    title: str | None = None
     text: str
-    num_pages: Optional[int] = None
+    num_pages: int | None = None
     backend: str
 
 
-def extract_text(path: "Path | str", converter=None) -> IngestedPaper:
+def extract_text(path: Path | str, converter=None) -> IngestedPaper:
     """Extract text from a PDF file.
 
     Parameters
@@ -43,6 +43,7 @@ def extract_text(path: "Path | str", converter=None) -> IngestedPaper:
 
     if converter is None:
         from docling.document_converter import DocumentConverter  # lazy import
+
         converter = DocumentConverter()
 
     try:
@@ -52,11 +53,11 @@ def extract_text(path: "Path | str", converter=None) -> IngestedPaper:
 
     text = result.document.export_to_markdown()
 
-    num_pages: Optional[int] = None
+    num_pages: int | None = None
     if hasattr(result, "pages"):
         num_pages = len(result.pages)
 
-    title: Optional[str] = None
+    title: str | None = None
     if hasattr(result.document, "title"):
         title = result.document.title
 

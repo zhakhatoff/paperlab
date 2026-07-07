@@ -1,4 +1,5 @@
 """JSONL persistence for ReviewReport sessions."""
+
 from __future__ import annotations
 
 import json

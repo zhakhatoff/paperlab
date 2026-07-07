@@ -1,4 +1,6 @@
 """paperlab.sessions — JSONL persistence and export for ReviewReport."""
+
+from paperlab.sessions.export import to_json, to_markdown
 from paperlab.sessions.store import (
     SessionSummary,
     default_sessions_dir,
@@ -6,7 +8,6 @@ from paperlab.sessions.store import (
     load_report,
     save_report,
 )
-from paperlab.sessions.export import to_json, to_markdown
 
 __all__ = [
     "default_sessions_dir",

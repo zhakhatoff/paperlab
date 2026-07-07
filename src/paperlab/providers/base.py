@@ -13,5 +13,4 @@ class LLMProvider(abc.ABC):
         user: str,
         model: str,
         temperature: float = 0.2,
-    ) -> str:
-        ...
+    ) -> str: ...

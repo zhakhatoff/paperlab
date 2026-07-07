@@ -1,7 +1,8 @@
 """Tests for the `paperlab web` CLI command."""
+
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from typer.testing import CliRunner
 

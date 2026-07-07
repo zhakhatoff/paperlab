@@ -1,15 +1,14 @@
 """Tests for paperlab.ingest.pdf — no real docling import."""
-from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from paperlab.ingest import IngestError, IngestedPaper, extract_text
-
+from paperlab.ingest import IngestedPaper, IngestError, extract_text
 
 # ---------------------------------------------------------------------------
 # Fake converter helpers — no docling dependency
 # ---------------------------------------------------------------------------
+
 
 class _FakeDocument:
     def __init__(self, text: str, title=None):
@@ -46,6 +45,7 @@ class _FailConverter:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_file_not_found(tmp_path):
     missing = tmp_path / "ghost.pdf"

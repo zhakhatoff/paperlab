@@ -2,20 +2,21 @@
 
 import pytest
 
-from paperlab.providers.fake import FakeProvider
 from paperlab.agents import (
-    AgentReport,
-    SummarizerAgent,
-    MethodologistAgent,
-    CriticAgent,
-    ContextualizerAgent,
     ALL_AGENTS,
+    AgentReport,
+    ContextualizerAgent,
+    CriticAgent,
+    MethodologistAgent,
+    SummarizerAgent,
 )
+from paperlab.providers.fake import FakeProvider
 
 DEFAULT_JSON = '{"result": "ok"}'
 
 
 # --- NAME class attributes ---
+
 
 def test_summarizer_name():
     assert SummarizerAgent.NAME == "summarizer"
@@ -35,12 +36,14 @@ def test_contextualizer_name():
 
 # --- ALL_AGENTS ---
 
+
 def test_all_agents_contains_all_four():
     names = {cls.NAME for cls in ALL_AGENTS}
     assert names == {"summarizer", "methodologist", "critic", "contextualizer"}
 
 
 # --- run() returns AgentReport with correct agent_name ---
+
 
 @pytest.mark.asyncio
 async def test_summarizer_run_agent_name():
@@ -79,6 +82,7 @@ async def test_contextualizer_run_agent_name():
 
 
 # --- prompt is loaded (non-empty system) for methodologist/critic/contextualizer ---
+
 
 @pytest.mark.asyncio
 async def test_methodologist_loads_prompt():

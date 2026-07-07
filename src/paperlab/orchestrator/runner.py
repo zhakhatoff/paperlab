@@ -1,13 +1,14 @@
 """paperlab.orchestrator.runner — parallel review runner."""
+
 from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel
 
-from paperlab.agents import AgentReport, ALL_AGENTS
+from paperlab.agents import ALL_AGENTS, AgentReport
 from paperlab.ingest import IngestedPaper
 from paperlab.providers.base import LLMProvider
 
@@ -31,7 +32,7 @@ async def review(
     session_id: str | None = None,
 ) -> ReviewReport:
     session_id = session_id or uuid.uuid4().hex[:12]
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = datetime.now(UTC).isoformat()
 
     agent_instances = [cls(provider, mode, lang, model) for cls in ALL_AGENTS]
 
@@ -41,7 +42,7 @@ async def review(
     )
 
     agents: dict[str, AgentReport] = {}
-    for agent, result in zip(agent_instances, results):
+    for agent, result in zip(agent_instances, results, strict=False):
         if isinstance(result, Exception):
             agents[agent.NAME] = AgentReport(
                 agent_name=agent.NAME,

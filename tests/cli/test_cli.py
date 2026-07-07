@@ -1,10 +1,9 @@
 """Integration tests for the paperlab CLI."""
+
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 import paperlab.cli.main as cli_main
@@ -132,7 +131,7 @@ def test_read_with_fake_provider(tmp_path, monkeypatch):
     lines = [ln for ln in result.output.strip().split("\n") if ln.strip()]
     last_line = lines[-1]
     assert last_line.startswith("session: "), f"last line was: {last_line!r}"
-    session_id = last_line[len("session: "):].strip()
+    session_id = last_line[len("session: ") :].strip()
     assert re.fullmatch(r"[0-9a-f]{12}", session_id), f"unexpected session_id: {session_id!r}"
 
     session_file = tmp_path / "sessions" / f"{session_id}.jsonl"
@@ -170,7 +169,7 @@ def test_show_session(tmp_path, monkeypatch):
     assert read_result.exit_code == 0, read_result.output
 
     lines = [ln for ln in read_result.output.strip().split("\n") if ln.strip()]
-    session_id = lines[-1][len("session: "):].strip()
+    session_id = lines[-1][len("session: ") :].strip()
 
     show_result = runner.invoke(app, ["show", session_id])
     assert show_result.exit_code == 0, show_result.output
@@ -192,10 +191,14 @@ def test_read_writes_output_file(tmp_path, monkeypatch):
         [
             "read",
             str(paper),
-            "--provider", "fake",
-            "--model", "any",
-            "--format", "markdown",
-            "--output", str(out_file),
+            "--provider",
+            "fake",
+            "--model",
+            "any",
+            "--format",
+            "markdown",
+            "--output",
+            str(out_file),
         ],
     )
     assert result.exit_code == 0, result.output

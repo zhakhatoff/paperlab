@@ -1,7 +1,7 @@
 from .base import LLMProvider, ProviderError
-from .litellm_provider import LiteLLMProvider
+from .factory import SUPPORTED_PROVIDERS, make_provider
 from .fake import FakeProvider
-from .factory import make_provider, SUPPORTED_PROVIDERS
+from .litellm_provider import LiteLLMProvider
 
 __all__ = [
     "LLMProvider",
