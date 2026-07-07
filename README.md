@@ -60,33 +60,53 @@ rm -rf ~/.local/pipx/shared
 PIPX_DEFAULT_PYTHON=$(brew --prefix python@3.12)/bin/python3.12 pipx ensurepath
 ```
 
-### Use
+### CLI
+
+| Command | What it does |
+|---|---|
+| `paperlab version` | Print installed version |
+| `paperlab init [--force]` | Create `~/.paperlab/{config.toml, sessions/}` |
+| `paperlab read <paper.pdf>` | Run the 4-agent review (see flags below) |
+| `paperlab list` | Table of past sessions |
+| `paperlab show <session-id> [--format markdown\|json]` | Reprint a past session |
+| `paperlab config get <key>` | Read `provider` / `model` / `mode` / `lang` / `extra.<k>` |
+| `paperlab config set <key> <value>` | Update config.toml |
+| `paperlab web` | Launch Gradio dashboard |
+
+`paperlab read` flags:
+
+| Flag | Values | Default |
+|---|---|---|
+| `--mode` | `rigorous`, `learning` | from config |
+| `--lang` | `en`, `ru` | from config |
+| `--provider` | see table below | from config |
+| `--model` | any model string the provider accepts | from config |
+| `--format` | `markdown`, `json` | `markdown` |
+| `--output` | file path | stdout |
 
 ```bash
 paperlab read paper.pdf --mode rigorous --lang en
 paperlab read paper.pdf --mode learning --lang ru --provider ollama --model qwen2.5:7b
-paperlab list                    # your review history
-paperlab show <session-id>       # revisit a past review
-paperlab web                     # open the browser dashboard (phase 8)
-```
-
-Output format:
-
-```bash
-paperlab read paper.pdf --format markdown          # default
 paperlab read paper.pdf --format json --output report.json
 ```
 
 ### Providers
 
-paperlab uses [LiteLLM](https://github.com/BerriAI/litellm) under the hood, so any of these work out of the box:
+paperlab uses [LiteLLM](https://github.com/BerriAI/litellm) under the hood. Supported provider names:
 
-- `ollama` (local, default, free)
-- `openrouter` (unified access to GPT, Claude, Gemini, Llama, etc.)
-- `together`, `groq`, `gemini`, `anthropic`, `openai`
-- `custom` (any OpenAI-compatible endpoint, e.g. your university's GPU cluster)
+| Name | Where it runs | Auth | Model string example |
+|---|---|---|---|
+| `ollama` | Local (default) | none | `qwen2.5:7b`, `llama3.2:3b` |
+| `openrouter` | Cloud | `OPENROUTER_API_KEY` | `openrouter/anthropic/claude-3.5-sonnet` |
+| `together` | Cloud | `TOGETHER_API_KEY` | `together_ai/meta-llama/Llama-3-70b-chat-hf` |
+| `groq` | Cloud | `GROQ_API_KEY` | `groq/llama-3.1-70b-versatile` |
+| `gemini` | Cloud | `GEMINI_API_KEY` | `gemini/gemini-1.5-pro` |
+| `anthropic` | Cloud | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-20241022` |
+| `openai` | Cloud | `OPENAI_API_KEY` | `gpt-4o` |
+| `custom` | Any OpenAI-compatible endpoint | as needed | LiteLLM convention |
+| `fake` | In-process test double | none | any |
 
-Switch with `paperlab config set provider ollama` or pass `--provider` per invocation.
+Switch globally with `paperlab config set provider <name>` or per invocation with `--provider`.
 
 ### Config
 
