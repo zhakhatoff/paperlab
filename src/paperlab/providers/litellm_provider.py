@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 from .base import LLMProvider, ProviderError
 
 
 class LiteLLMProvider(LLMProvider):
+    def __init__(self, provider_name: str | None = None) -> None:
+        self._provider_name = provider_name
+
     async def complete(
         self,
         system: str,
@@ -10,6 +15,11 @@ class LiteLLMProvider(LLMProvider):
         temperature: float = 0.2,
     ) -> str:
         import litellm  # lazy import
+
+        if self._provider_name:
+            from paperlab.providers.keys import apply_key_to_env
+
+            apply_key_to_env(self._provider_name)
 
         try:
             response = await litellm.acompletion(

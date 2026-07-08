@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 import types
 from unittest.mock import MagicMock
@@ -46,3 +47,23 @@ def test_litellm_exception_wrapped_in_provider_error(monkeypatch):
     with pytest.raises(ProviderError) as exc_info:
         asyncio.run(provider.complete("s", "u", "m"))
     assert "boom" in str(exc_info.value)
+
+
+def test_litellm_apply_key_to_env_before_complete(tmp_path, monkeypatch):
+    """LiteLLMProvider with provider_name applies saved key to env before calling litellm."""
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+    from paperlab.providers.keys import save_key
+
+    save_key("openrouter", "sk-test-or-key")
+
+    fake_litellm = _make_fake_litellm("result")
+    monkeypatch.setitem(sys.modules, "litellm", fake_litellm)
+
+    from paperlab.providers.litellm_provider import LiteLLMProvider
+
+    provider = LiteLLMProvider(provider_name="openrouter")
+    asyncio.run(provider.complete("s", "u", "m"))
+
+    assert os.environ.get("OPENROUTER_API_KEY") == "sk-test-or-key"

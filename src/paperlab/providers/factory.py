@@ -37,5 +37,5 @@ def make_provider(name: str) -> LLMProvider:
     if name == "fake":
         return FakeProvider()
     if name in _LITELLM_PROVIDERS:
-        return LiteLLMProvider()
+        return LiteLLMProvider(provider_name=name)
     raise ValueError(f"Unknown provider {name!r}. supported: " + ", ".join(SUPPORTED_PROVIDERS))
