@@ -39,3 +39,4 @@ htmlcov/
 # scratch and experiments
 scratchpad/
 .scratch/
+.playwright-mcp/
