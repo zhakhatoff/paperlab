@@ -50,131 +50,542 @@ def _list_recent_sessions(limit: int = 25) -> list[list[str]]:
     return rows
 
 
+def _sessions_html(limit: int = 25) -> str:
+    """Render sessions as an HTML table, or an empty-state message."""
+    rows = _list_recent_sessions(limit)
+    if not rows:
+        return '<p class="pl-empty-msg">No sessions yet. Completed reviews are saved automatically.</p>'
+    headers = ["session_id", "created_at", "mode", "lang", "model", "title"]
+    th = "".join(f"<th>{h}</th>" for h in headers)
+    body_rows = []
+    for row in rows:
+        cells = []
+        for i, cell in enumerate(row):
+            cls = ' class="pl-mono"' if i == 0 else ""
+            cells.append(f"<td{cls}>{cell}</td>")
+        body_rows.append(f"<tr>{''.join(cells)}</tr>")
+    return (
+        '<div class="pl-sessions-wrap"><table class="pl-sessions-table">'
+        f"<thead><tr>{th}</tr></thead>"
+        f"<tbody>{''.join(body_rows)}</tbody>"
+        "</table></div>"
+    )
+
+
+# ---------------------------------------------------------------------------
+# CSS
+# ---------------------------------------------------------------------------
+
 _CUSTOM_CSS = """
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=EB+Garamond:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-:root, .dark {
-  --pl-bg:        #020617;
-  --pl-surface:   #0F172A;
-  --pl-surface-2: #1E293B;
-  --pl-border:    #1F2A44;
-  --pl-text:      #F8FAFC;
-  --pl-muted:     #94A3B8;
-  --pl-accent:    #22C55E;
-  --pl-accent-2:  #16A34A;
-  --pl-danger:    #EF4444;
-  --pl-warn:      #F59E0B;
+/* ── Design tokens ─────────────────────────────────────────────────────── */
+:root {
+  --pl-paper:      #FBFAFD;
+  --pl-surface:    #FFFFFF;
+  --pl-surface-2:  #F4F2FA;
+  --pl-border:     #E4E0F0;
+  --pl-border-2:   #CFC9E4;
+  --pl-ink:        #1A1523;
+  --pl-muted:      #6E6787;
+  --pl-hema:       #4A3AA3;
+  --pl-hema-dark:  #3B2E85;
+  --pl-hema-soft:  #EDEAFB;
+  --pl-eosin:      #D2497A;
+  --pl-eosin-soft: #FBEAF1;
+  --pl-teal:       #0F766E;
+  --pl-teal-soft:  #E4F3F1;
+  --pl-amber:      #B45309;
+  --pl-amber-soft: #FBEFE0;
+  --pl-radius:     12px;
+  --pl-radius-sm:  8px;
+  --pl-shadow:     0 1px 2px rgba(26,21,35,0.05), 0 4px 16px rgba(74,58,163,0.06);
 }
 
+/* Force light theme — override Gradio's .dark class */
+.dark, html.dark, body.dark {
+  --pl-paper:      #FBFAFD !important;
+  --pl-surface:    #FFFFFF !important;
+  --pl-surface-2:  #F4F2FA !important;
+  --pl-border:     #E4E0F0 !important;
+  --pl-border-2:   #CFC9E4 !important;
+  --pl-ink:        #1A1523 !important;
+  --pl-muted:      #6E6787 !important;
+}
+.dark body, .dark .gradio-container {
+  background: var(--pl-paper) !important;
+  color: var(--pl-ink) !important;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
 body, .gradio-container {
-  background: var(--pl-bg) !important;
-  color: var(--pl-text) !important;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  background: var(--pl-paper) !important;
+  color: var(--pl-ink) !important;
+  font-family: 'Instrument Sans', system-ui, -apple-system, sans-serif !important;
+  font-size: 15px;
+  line-height: 1.6;
 }
-
-.gradio-container { max-width: 1280px !important; margin: 0 auto !important; padding: 24px !important; }
+.gradio-container {
+  max-width: 1240px !important;
+  margin: 0 auto !important;
+  padding: 28px 24px !important;
+}
 footer { display: none !important; }
 
+/* ── Header ─────────────────────────────────────────────────────────────── */
 .pl-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 20px 24px; margin-bottom: 20px;
-  background: linear-gradient(135deg, var(--pl-surface) 0%, var(--pl-surface-2) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 28px 24px 28px;
+  margin-bottom: 24px;
+  background: var(--pl-surface);
   border: 1px solid var(--pl-border);
-  border-radius: 14px;
+  border-radius: var(--pl-radius);
+  box-shadow: var(--pl-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.pl-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #4A3AA3 0%, #7A5AC8 35%, #D2497A 100%);
 }
 .pl-header h1 {
-  font-family: 'EB Garamond', 'Crimson Text', Georgia, serif !important;
-  font-weight: 700; font-size: 28px; margin: 0 0 4px 0; letter-spacing: -0.01em;
+  font-family: 'Fraunces', Georgia, serif !important;
+  font-weight: 700;
+  font-size: 30px;
+  margin: 0 0 3px 0;
+  letter-spacing: -0.02em;
+  color: var(--pl-ink);
 }
-.pl-header p { color: var(--pl-muted); margin: 0; font-size: 14px; }
+.pl-header-sub {
+  font-size: 14px;
+  color: var(--pl-muted);
+  margin: 0;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
 .pl-badge {
-  padding: 4px 10px; border-radius: 999px;
-  background: rgba(34,197,94,0.12); color: var(--pl-accent);
-  border: 1px solid rgba(34,197,94,0.35);
-  font-size: 12px; font-weight: 600; letter-spacing: 0.02em;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--pl-hema-soft);
+  color: var(--pl-hema);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
 }
 
-.pl-panel, .block, .form {
+/* ── Panels / cards ─────────────────────────────────────────────────────── */
+.block, .form, .gap {
   background: var(--pl-surface) !important;
   border: 1px solid var(--pl-border) !important;
-  border-radius: 12px !important;
+  border-radius: var(--pl-radius) !important;
+  box-shadow: var(--pl-shadow) !important;
 }
-.pl-section-title { font-size: 12px; font-weight: 600; color: var(--pl-muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 4px 0 10px 0; }
 
-button.primary, .pl-run > button {
-  background: var(--pl-accent) !important;
-  color: #052e13 !important;
+/* ── Eyebrow section titles ─────────────────────────────────────────────── */
+.pl-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--pl-hema);
+  margin: 0 0 10px 0;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+.pl-eyebrow-gap { margin-top: 18px; }
+
+/* ── File upload zone ───────────────────────────────────────────────────── */
+.pl-file input[type="file"],
+.pl-file .wrap,
+.pl-file .file-preview,
+[data-testid="file"] {
+  border: 1.5px dashed var(--pl-border-2) !important;
+  background: var(--pl-surface-2) !important;
+  border-radius: var(--pl-radius) !important;
+  color: var(--pl-muted) !important;
+  transition: border-color 160ms ease;
+}
+.pl-file:hover input[type="file"],
+.pl-file:hover .wrap,
+.pl-file:hover [data-testid="file"] {
+  border-color: var(--pl-hema) !important;
+}
+
+/* ── Inputs / radio / dropdown ──────────────────────────────────────────── */
+input, textarea, select,
+.wrap input, .wrap select,
+.svelte-1cl284s input {
+  background: var(--pl-surface-2) !important;
+  color: var(--pl-ink) !important;
+  border-color: var(--pl-border) !important;
+  border-radius: var(--pl-radius-sm) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
+}
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--pl-hema) !important;
+  outline-offset: 2px !important;
+  border-color: var(--pl-hema) !important;
+}
+
+/* ── Run button ─────────────────────────────────────────────────────────── */
+.pl-run > button,
+button.primary {
+  background: var(--pl-hema) !important;
+  color: #FFFFFF !important;
   border: none !important;
+  font-size: 15px !important;
   font-weight: 600 !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
   border-radius: 10px !important;
+  width: 100% !important;
   cursor: pointer !important;
   transition: background 180ms ease, transform 120ms ease !important;
 }
-.pl-run > button:hover { background: var(--pl-accent-2) !important; }
-.pl-run > button:active { transform: translateY(1px); }
-.pl-run > button:disabled { background: var(--pl-surface-2) !important; color: var(--pl-muted) !important; cursor: not-allowed !important; }
-
-input, textarea, .wrap.svelte-1cl284s input { background: var(--pl-surface-2) !important; color: var(--pl-text) !important; border-radius: 8px !important; }
-
-.pl-agents { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 12px 0 4px 0; }
-.pl-agent {
-  padding: 10px 12px; border-radius: 10px;
-  background: var(--pl-surface); border: 1px solid var(--pl-border);
-  display: flex; align-items: center; gap: 10px;
+.pl-run > button:hover { background: var(--pl-hema-dark) !important; }
+.pl-run > button:active { transform: translateY(1px) !important; }
+.pl-run > button:disabled {
+  background: var(--pl-surface-2) !important;
+  color: var(--pl-muted) !important;
+  cursor: not-allowed !important;
 }
-.pl-dot { width: 8px; height: 8px; border-radius: 999px; background: var(--pl-muted); box-shadow: 0 0 0 3px rgba(148,163,184,0.15); }
-.pl-agent.running .pl-dot { background: var(--pl-warn); box-shadow: 0 0 0 3px rgba(245,158,11,0.2); animation: pulse 1.4s ease-in-out infinite; }
-.pl-agent.done    .pl-dot { background: var(--pl-accent); box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
-.pl-agent.error   .pl-dot { background: var(--pl-danger); box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
-.pl-agent-name { font-size: 13px; font-weight: 500; }
-@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: 0.55 } }
+.pl-run > button:focus-visible {
+  outline: 2px solid var(--pl-hema) !important;
+  outline-offset: 2px !important;
+}
+.pl-run-hint {
+  font-size: 12px;
+  color: var(--pl-muted);
+  margin: 8px 0 0 0;
+  text-align: center;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
 
-.pl-status { padding: 10px 12px; border-radius: 10px; background: var(--pl-surface-2); border: 1px solid var(--pl-border); font-size: 13px; color: var(--pl-muted); }
-.pl-status.ok    { color: var(--pl-accent); border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.06); }
-.pl-status.error { color: var(--pl-danger); border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.06); }
+/* ── Refresh button (secondary) ─────────────────────────────────────────── */
+.pl-refresh > button,
+button.secondary {
+  background: var(--pl-surface) !important;
+  color: var(--pl-ink) !important;
+  border: 1px solid var(--pl-border) !important;
+  border-radius: var(--pl-radius-sm) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: border-color 160ms ease, color 160ms ease !important;
+}
+.pl-refresh > button:hover {
+  border-color: var(--pl-hema) !important;
+  color: var(--pl-hema) !important;
+}
+.pl-refresh > button:focus-visible {
+  outline: 2px solid var(--pl-hema) !important;
+  outline-offset: 2px !important;
+}
 
-.prose, .markdown, .md { color: var(--pl-text) !important; font-family: 'Inter', system-ui, sans-serif !important; line-height: 1.65 !important; }
-.prose h1, .md h1 { font-family: 'EB Garamond', Georgia, serif !important; font-size: 26px !important; margin-top: 0 !important; }
-.prose h2, .md h2 { font-family: 'EB Garamond', Georgia, serif !important; font-size: 22px !important; color: var(--pl-text) !important; margin-top: 24px !important; border-bottom: 1px solid var(--pl-border); padding-bottom: 6px; }
-.prose h3, .md h3 { font-family: 'Inter', sans-serif !important; font-weight: 600 !important; font-size: 15px !important; color: var(--pl-muted) !important; margin-top: 18px !important; text-transform: uppercase; letter-spacing: 0.06em; }
-.prose code, .md code, code, pre { font-family: 'JetBrains Mono', ui-monospace, monospace !important; background: var(--pl-surface-2) !important; border-radius: 6px; padding: 1px 6px; }
-.prose blockquote, .md blockquote { border-left: 3px solid var(--pl-danger); color: var(--pl-danger); background: rgba(239,68,68,0.05); padding: 6px 12px; border-radius: 6px; }
+/* ── Agent cards ─────────────────────────────────────────────────────────── */
+.pl-agents {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 4px 0 12px 0;
+}
+@media (max-width: 900px) {
+  .pl-agents { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.pl-agent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--pl-surface);
+  border: 1px solid var(--pl-border);
+  border-radius: 10px;
+  box-shadow: var(--pl-shadow);
+}
+/* Per-agent stain colours */
+.pl-agent--summarizer     { --agent-color: #4A3AA3; --agent-glow: rgba(74,58,163,0.18);  border-left: 3px solid #4A3AA3; }
+.pl-agent--methodologist  { --agent-color: #0E7490; --agent-glow: rgba(14,116,144,0.18); border-left: 3px solid #0E7490; }
+.pl-agent--critic         { --agent-color: #D2497A; --agent-glow: rgba(210,73,122,0.18); border-left: 3px solid #D2497A; }
+.pl-agent--contextualizer { --agent-color: #B45309; --agent-glow: rgba(180,83,9,0.18);  border-left: 3px solid #B45309; }
 
+.pl-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #C9C4DA;
+  margin-top: 3px;
+}
+.pl-agent.running .pl-dot {
+  background: var(--agent-color);
+  box-shadow: 0 0 0 4px var(--agent-glow);
+  animation: pl-pulse 1.3s ease-in-out infinite;
+}
+.pl-agent.done .pl-dot {
+  background: #0F766E;
+  box-shadow: 0 0 0 4px rgba(15,118,110,0.18);
+}
+.pl-agent.error .pl-dot {
+  background: #D2497A;
+  box-shadow: 0 0 0 4px rgba(210,73,122,0.18);
+}
+@keyframes pl-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+.pl-agent-info { display: flex; flex-direction: column; gap: 2px; }
+.pl-agent-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pl-ink);
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+.pl-agent-role {
+  font-size: 11px;
+  color: var(--pl-muted);
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* ── Status bar ─────────────────────────────────────────────────────────── */
+.pl-status {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--pl-surface-2);
+  border: 1px solid var(--pl-border);
+  font-size: 13px;
+  color: var(--pl-muted);
+  margin-bottom: 4px;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+.pl-status.ok {
+  background: var(--pl-teal-soft);
+  color: var(--pl-teal);
+  border-color: rgba(15,118,110,0.3);
+}
+.pl-status.error {
+  background: var(--pl-eosin-soft);
+  color: var(--pl-eosin);
+  border-color: rgba(210,73,122,0.3);
+}
+.pl-status code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+  font-size: 12px;
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.tabs > .tab-nav button,
+[role="tab"] {
+  color: var(--pl-muted) !important;
+  border-bottom: 2px solid transparent !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  background: transparent !important;
+  transition: color 160ms ease, border-color 160ms ease !important;
+}
+.tabs > .tab-nav button:hover,
+[role="tab"]:hover {
+  color: var(--pl-ink) !important;
+}
+.tabs > .tab-nav button.selected,
+[role="tab"][aria-selected="true"] {
+  color: var(--pl-hema) !important;
+  border-bottom-color: var(--pl-hema) !important;
+}
+.tabs > .tab-nav button:focus-visible,
+[role="tab"]:focus-visible {
+  outline: 2px solid var(--pl-hema) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Report markdown ─────────────────────────────────────────────────────── */
+.prose, .markdown, .md {
+  color: var(--pl-ink) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
+  line-height: 1.6 !important;
+  font-size: 15px !important;
+}
+.prose h1, .md h1, .markdown h1 {
+  font-family: 'Fraunces', Georgia, serif !important;
+  font-weight: 600 !important;
+  font-size: 24px !important;
+  color: var(--pl-ink) !important;
+  margin-top: 0 !important;
+  letter-spacing: -0.01em;
+}
+.prose h2, .md h2, .markdown h2 {
+  font-family: 'Fraunces', Georgia, serif !important;
+  font-weight: 600 !important;
+  font-size: 20px !important;
+  color: var(--pl-ink) !important;
+  border-bottom: 1px solid var(--pl-border) !important;
+  padding-bottom: 6px !important;
+  margin-top: 28px !important;
+}
+.prose h3, .md h3, .markdown h3 {
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  color: var(--pl-hema) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  margin-top: 18px !important;
+}
+.prose li, .md li, .markdown li { line-height: 1.65 !important; }
+.prose li::marker, .md li::marker, .markdown li::marker { color: var(--pl-hema) !important; }
+.prose code, .md code, .markdown code,
+.prose pre, .md pre, .markdown pre,
+code, pre {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+  background: var(--pl-surface-2) !important;
+  color: var(--pl-ink) !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+}
+code { padding: 1px 5px !important; }
+pre  { padding: 12px 16px !important; overflow-x: auto; }
+.prose blockquote, .md blockquote, .markdown blockquote {
+  border-left: 3px solid var(--pl-eosin) !important;
+  background: var(--pl-eosin-soft) !important;
+  color: #9C2F5A !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  margin-left: 0 !important;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.pl-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--pl-muted);
+  font-size: 14px;
+  gap: 12px;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+  text-align: center;
+}
+.pl-empty svg { opacity: 0.45; }
+.pl-empty-msg {
+  color: var(--pl-muted);
+  font-size: 13px;
+  padding: 20px 0;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* ── Sessions table ──────────────────────────────────────────────────────── */
+.pl-sessions-wrap { overflow-x: auto; }
+.pl-sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+.pl-sessions-table thead th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pl-muted);
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--pl-border);
+}
+.pl-sessions-table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--pl-border);
+  color: var(--pl-ink);
+  vertical-align: top;
+}
+.pl-sessions-table tbody tr:hover td { background: var(--pl-surface-2); }
+.pl-mono {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+  font-size: 12px;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
 """
 
+# ---------------------------------------------------------------------------
+# HTML helpers
+# ---------------------------------------------------------------------------
+
 _HEADER_HTML = """
 <div class="pl-header">
   <div>
     <h1>paperlab</h1>
-    <p>Multi-agent LLM review of biomedical research papers · rigorous · learning · en/ru</p>
+    <p class="pl-header-sub">Peer-review bench for biomedical papers</p>
   </div>
-  <div class="pl-badge">v0.1</div>
+  <div class="pl-badge">H&amp;E &middot; four-agent review</div>
 </div>
 """
 
+_EMPTY_REPORT_HTML = """
+<div class="pl-empty">
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="1.5"
+       stroke-linecap="round" stroke-linejoin="round"
+       xmlns="http://www.w3.org/2000/svg">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+    <polyline points="10 9 9 9 8 9"/>
+  </svg>
+  <span>No report yet. Upload a PDF and run the review.</span>
+</div>
+"""
+
+_AGENT_ROLES: dict[str, str] = {
+    "summarizer": "claims &amp; findings",
+    "methodologist": "design &amp; checklists",
+    "critic": "stats &amp; bias",
+    "contextualizer": "field &amp; novelty",
+}
+
+_AGENT_LABELS: dict[str, str] = {
+    "summarizer": "Summarizer",
+    "methodologist": "Methodologist",
+    "critic": "Critic",
+    "contextualizer": "Contextualizer",
+}
+
+_AGENT_ORDER = ["summarizer", "methodologist", "critic", "contextualizer"]
+
 
 def _agents_html(states: dict[str, str]) -> str:
-    order = [
-        ("summarizer", "Summarizer"),
-        ("methodologist", "Methodologist"),
-        ("critic", "Critic"),
-        ("contextualizer", "Contextualizer"),
-    ]
     cards = []
-    for key, label in order:
+    for key in _AGENT_ORDER:
         state = states.get(key, "idle")
+        label = _AGENT_LABELS[key]
+        role = _AGENT_ROLES[key]
         cards.append(
-            f'<div class="pl-agent {state}"><span class="pl-dot"></span>'
-            f'<span class="pl-agent-name">{label}</span></div>'
+            f'<div class="pl-agent pl-agent--{key} {state}">'
+            f'<span class="pl-dot"></span>'
+            f'<div class="pl-agent-info">'
+            f'<span class="pl-agent-name">{label}</span>'
+            f'<span class="pl-agent-role">{role}</span>'
+            f"</div></div>"
         )
     return f'<div class="pl-agents">{"".join(cards)}</div>'
 
 
 def _status_html(text: str, kind: str = "info") -> str:
-    return f'<div class="pl-status {kind}">{text}</div>'
+    css_class = f"pl-status {kind}".strip()
+    return f'<div class="{css_class}">{text}</div>'
+
+
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
 
 
 def build_app():
@@ -183,48 +594,46 @@ def build_app():
 
     import paperlab.providers as _providers
 
-    theme = gr.themes.Base(
-        primary_hue="green",
-        secondary_hue="slate",
-        neutral_hue="slate",
-        font=[gr.themes.GoogleFont("Inter"), "system-ui", "sans-serif"],
-        font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "ui-monospace", "monospace"],
+    theme = gr.themes.Soft(
+        primary_hue=gr.themes.colors.violet,
+        neutral_hue=gr.themes.colors.slate,
+        font=[gr.themes.GoogleFont("Instrument Sans"), "system-ui", "sans-serif"],
+        font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "ui-monospace", "monospace"],
     )
 
     with gr.Blocks(
         theme=theme,
         css=_CUSTOM_CSS,
-        title="paperlab",
+        title="paperlab — peer-review bench",
         analytics_enabled=False,
+        js="() => { document.documentElement.classList.remove('dark'); document.body.classList.remove('dark'); }",
     ) as app:
         gr.HTML(_HEADER_HTML)
 
         with gr.Row(equal_height=False):
+            # ── Left column: settings ────────────────────────────────────
             with gr.Column(scale=4, min_width=340):
-                gr.HTML('<div class="pl-section-title">Paper</div>')
+                gr.HTML('<p class="pl-eyebrow">Specimen</p>')
                 paper = gr.File(
                     label="",
                     file_types=[".pdf"],
                     file_count="single",
                     show_label=False,
+                    elem_classes=["pl-file"],
                 )
-                gr.HTML(
-                    '<div class="pl-section-title" style="margin-top:14px;">Review settings</div>'
+                gr.HTML('<p class="pl-eyebrow pl-eyebrow-gap">Protocol</p>')
+                mode = gr.Radio(
+                    choices=["rigorous", "learning"],
+                    value="rigorous",
+                    label="Mode",
+                    info="rigorous — peer-review tone · learning — friendly",
                 )
-                with gr.Row():
-                    mode = gr.Radio(
-                        choices=["rigorous", "learning"],
-                        value="rigorous",
-                        label="Mode",
-                        info="rigorous — peer-review tone · learning — friendly",
-                    )
-                with gr.Row():
-                    lang = gr.Radio(
-                        choices=["en", "ru"],
-                        value="en",
-                        label="Output language",
-                    )
-                gr.HTML('<div class="pl-section-title" style="margin-top:14px;">Backend</div>')
+                lang = gr.Radio(
+                    choices=["en", "ru"],
+                    value="en",
+                    label="Output language",
+                )
+                gr.HTML('<p class="pl-eyebrow pl-eyebrow-gap">Instrument</p>')
                 provider = gr.Dropdown(
                     choices=list(_providers.SUPPORTED_PROVIDERS),
                     value="ollama",
@@ -236,8 +645,17 @@ def build_app():
                     label="Model",
                     placeholder="qwen2.5:7b, openrouter/…, gpt-4o, …",
                 )
-                run_btn = gr.Button("Run review", elem_classes=["pl-run"], variant="primary")
+                run_btn = gr.Button(
+                    "Run review",
+                    elem_classes=["pl-run"],
+                    variant="primary",
+                )
+                gr.HTML(
+                    '<p class="pl-run-hint">Four agents read in parallel.'
+                    " Nothing leaves your machine on ollama.</p>"
+                )
 
+            # ── Right column: results ────────────────────────────────────
             with gr.Column(scale=7):
                 agents_state = gr.HTML(_agents_html({}))
                 status = gr.HTML(_status_html("Idle. Upload a PDF and press Run review.", "info"))
@@ -245,51 +663,49 @@ def build_app():
                 with gr.Tabs():
                     with gr.TabItem("Report"):
                         md_output = gr.Markdown(
-                            value="",
+                            value=_EMPTY_REPORT_HTML,
                             show_label=False,
                             elem_classes=["md"],
                         )
                     with gr.TabItem("JSON"):
                         json_output = gr.Code(language="json", label="", lines=24)
                     with gr.TabItem("Sessions"):
-                        gr.HTML('<div class="pl-section-title">Recent sessions</div>')
-                        sessions_df = gr.Dataframe(
-                            headers=["session_id", "created_at", "mode", "lang", "model", "title"],
-                            value=_list_recent_sessions(),
-                            interactive=False,
-                            wrap=True,
-                            row_count=(0, "dynamic"),
+                        gr.HTML(
+                            '<p class="pl-eyebrow" style="margin-bottom:12px;">Recent sessions</p>'
                         )
-                        refresh_btn = gr.Button("Refresh", variant="secondary")
+                        sessions_display = gr.HTML(_sessions_html())
+                        refresh_btn = gr.Button(
+                            "Refresh",
+                            elem_classes=["pl-refresh"],
+                            variant="secondary",
+                        )
 
+        # ── Event handlers ───────────────────────────────────────────────
         def _on_click(
             paper_file, mode_val, lang_val, model_val, provider_val, progress=gr.Progress()
         ):
             if paper_file is None:
                 yield (
-                    "",
+                    _EMPTY_REPORT_HTML,
                     json.dumps({"error": "no paper uploaded"}, indent=2),
                     _agents_html({}),
                     _status_html("No PDF uploaded. Choose a file above.", "error"),
-                    _list_recent_sessions(),
+                    _sessions_html(),
+                    gr.update(),
                 )
                 return
 
             path = paper_file.name
             progress(0, desc="ingest")
             yield (
+                _EMPTY_REPORT_HTML,
                 "",
-                "",
-                _agents_html(
-                    {
-                        k: "running"
-                        for k in ["summarizer", "methodologist", "critic", "contextualizer"]
-                    }
-                ),
+                _agents_html({k: "running" for k in _AGENT_ORDER}),
                 _status_html(
                     "Extracting PDF text and dispatching four agents in parallel…", "info"
                 ),
                 gr.update(),
+                gr.update(interactive=False),
             )
 
             md, js = process(path, mode_val, lang_val, model_val, provider_val)
@@ -316,19 +732,20 @@ def build_app():
                 kind = "error"
 
             yield (
-                md,
+                md or _EMPTY_REPORT_HTML,
                 js,
                 _agents_html(agent_states),
                 _status_html(msg, kind),
-                _list_recent_sessions(),
+                _sessions_html(),
+                gr.update(interactive=True),
             )
 
         run_btn.click(
             fn=_on_click,
             inputs=[paper, mode, lang, model, provider],
-            outputs=[md_output, json_output, agents_state, status, sessions_df],
+            outputs=[md_output, json_output, agents_state, status, sessions_display, run_btn],
         )
-        refresh_btn.click(fn=lambda: _list_recent_sessions(), inputs=None, outputs=sessions_df)
+        refresh_btn.click(fn=lambda: _sessions_html(), inputs=None, outputs=sessions_display)
 
     return app
 
