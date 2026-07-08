@@ -130,11 +130,27 @@ body, .gradio-container {
   margin: 0 auto !important;
   padding: 28px 24px !important;
 }
+@media (max-width: 640px) {
+  .gradio-container { padding: 12px !important; }
+}
+/* Stack the two main columns on narrow viewports.
+   NB: gradio auto-prefixes selectors with the container class, so selectors
+   here must NOT mention .gradio-container themselves. */
+@media (max-width: 768px) {
+  .row { flex-direction: column !important; }
+  .row > .column {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+}
 footer { display: none !important; }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .pl-header {
   display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   align-items: center;
   justify-content: space-between;
   padding: 22px 28px 24px 28px;
@@ -185,7 +201,19 @@ footer { display: none !important; }
   border: 1px solid var(--pl-border) !important;
   border-radius: var(--pl-radius) !important;
   box-shadow: var(--pl-shadow) !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
+/* Flat HTML blocks: eyebrows, hints, header wrapper — no card chrome */
+.pl-flat, .pl-flat.block {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+/* Prevent horizontal overflow on narrow viewports */
+.gradio-container { overflow-x: hidden; }
+.row, .column { min-width: 0 !important; }
 
 /* ── Eyebrow section titles ─────────────────────────────────────────────── */
 .pl-eyebrow {
@@ -214,6 +242,35 @@ footer { display: none !important; }
 .pl-file:hover .wrap,
 .pl-file:hover [data-testid="file"] {
   border-color: var(--pl-hema) !important;
+}
+/* Drop zone spans the full card width */
+.pl-file,
+.pl-file > div,
+.pl-file .wrap,
+.pl-file .file-preview,
+.pl-file [data-testid="file"],
+.pl-file [data-testid="file-upload"],
+.pl-file .upload-container,
+.pl-file button {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* ── Field labels: flat, not pill chips ─────────────────────────────────── */
+span[data-testid="block-info"],
+.block-label,
+.block-title,
+label > span,
+.container > label > span {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin-bottom: 4px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--pl-ink) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
 }
 
 /* ── Inputs / radio / dropdown ──────────────────────────────────────────── */
@@ -608,12 +665,12 @@ def build_app():
         analytics_enabled=False,
         js="() => { document.documentElement.classList.remove('dark'); document.body.classList.remove('dark'); }",
     ) as app:
-        gr.HTML(_HEADER_HTML)
+        gr.HTML(_HEADER_HTML, elem_classes=["pl-flat"])
 
         with gr.Row(equal_height=False):
             # ── Left column: settings ────────────────────────────────────
-            with gr.Column(scale=4, min_width=340):
-                gr.HTML('<p class="pl-eyebrow">Specimen</p>')
+            with gr.Column(scale=4, min_width=0):
+                gr.HTML('<p class="pl-eyebrow">Specimen</p>', elem_classes=["pl-flat"])
                 paper = gr.File(
                     label="",
                     file_types=[".pdf"],
@@ -621,7 +678,10 @@ def build_app():
                     show_label=False,
                     elem_classes=["pl-file"],
                 )
-                gr.HTML('<p class="pl-eyebrow pl-eyebrow-gap">Protocol</p>')
+                gr.HTML(
+                    '<p class="pl-eyebrow pl-eyebrow-gap">Protocol</p>',
+                    elem_classes=["pl-flat"],
+                )
                 mode = gr.Radio(
                     choices=["rigorous", "learning"],
                     value="rigorous",
@@ -633,7 +693,10 @@ def build_app():
                     value="en",
                     label="Output language",
                 )
-                gr.HTML('<p class="pl-eyebrow pl-eyebrow-gap">Instrument</p>')
+                gr.HTML(
+                    '<p class="pl-eyebrow pl-eyebrow-gap">Instrument</p>',
+                    elem_classes=["pl-flat"],
+                )
                 provider = gr.Dropdown(
                     choices=list(_providers.SUPPORTED_PROVIDERS),
                     value="ollama",
@@ -652,13 +715,17 @@ def build_app():
                 )
                 gr.HTML(
                     '<p class="pl-run-hint">Four agents read in parallel.'
-                    " Nothing leaves your machine on ollama.</p>"
+                    " Nothing leaves your machine on ollama.</p>",
+                    elem_classes=["pl-flat"],
                 )
 
             # ── Right column: results ────────────────────────────────────
-            with gr.Column(scale=7):
-                agents_state = gr.HTML(_agents_html({}))
-                status = gr.HTML(_status_html("Idle. Upload a PDF and press Run review.", "info"))
+            with gr.Column(scale=7, min_width=0):
+                agents_state = gr.HTML(_agents_html({}), elem_classes=["pl-flat"])
+                status = gr.HTML(
+                    _status_html("Idle. Upload a PDF and press Run review.", "info"),
+                    elem_classes=["pl-flat"],
+                )
 
                 with gr.Tabs():
                     with gr.TabItem("Report"):
@@ -671,9 +738,10 @@ def build_app():
                         json_output = gr.Code(language="json", label="", lines=24)
                     with gr.TabItem("Sessions"):
                         gr.HTML(
-                            '<p class="pl-eyebrow" style="margin-bottom:12px;">Recent sessions</p>'
+                            '<p class="pl-eyebrow" style="margin-bottom:12px;">Recent sessions</p>',
+                            elem_classes=["pl-flat"],
                         )
-                        sessions_display = gr.HTML(_sessions_html())
+                        sessions_display = gr.HTML(_sessions_html(), elem_classes=["pl-flat"])
                         refresh_btn = gr.Button(
                             "Refresh",
                             elem_classes=["pl-refresh"],
