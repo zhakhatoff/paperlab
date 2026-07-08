@@ -7,12 +7,32 @@ import json
 from types import SimpleNamespace
 
 from paperlab.ingest import extract_text
+from paperlab.providers import discovery, keys
 from paperlab.providers.factory import make_provider
 
 _RUNTIME = SimpleNamespace(
     extract_text=extract_text,
     make_provider=make_provider,
 )
+
+CLOUD_PROVIDERS: tuple = (
+    "openrouter",
+    "together",
+    "groq",
+    "gemini",
+    "anthropic",
+    "openai",
+    "custom",
+)
+
+_MODEL_DEFAULTS: dict[str, str] = {
+    "ollama": "qwen2.5:7b",
+    "anthropic": "claude-sonnet-4-5",
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-2.5-flash",
+}
+
+_KEY_SAVED_NOTE = "Key saved &mdash; stored in <code>~/.paperlab/keys.toml</code>"
 
 
 def process(
@@ -70,6 +90,153 @@ def _sessions_html(limit: int = 25) -> str:
         f"<tbody>{''.join(body_rows)}</tbody>"
         "</table></div>"
     )
+
+
+# ---------------------------------------------------------------------------
+# Provider setup panel — pure helpers (tested in tests/web/test_provider_panel.py)
+# ---------------------------------------------------------------------------
+
+
+def _model_default(provider: str, models: list) -> str:
+    """Pick a sensible default model for a provider."""
+    preset = _MODEL_DEFAULTS.get(provider)
+    if preset:
+        return preset
+    fallback = discovery.STATIC_FALLBACK_MODELS.get(provider, [])
+    if fallback:
+        return fallback[0]
+    if models:
+        first = models[0]
+        return first[1] if isinstance(first, tuple) else first
+    return ""
+
+
+def _key_mask(provider: str) -> str:
+    return keys.list_keys().get(provider, "")
+
+
+def _ollama_runtime_html(status: dict, ram_gb: float) -> str:
+    """Render the Local runtime card for the given ollama status."""
+    ram_line = f'<div class="pl-runtime-ram">Your machine: {ram_gb:g} GB RAM</div>'
+    if not status.get("installed"):
+        return (
+            '<div class="pl-runtime warn">'
+            '<div class="pl-runtime-title">Ollama is not installed.</div>'
+            '<code class="pl-cmd">brew install ollama</code>'
+            '<div class="pl-runtime-ram">or download from '
+            '<a href="https://ollama.com/download" target="_blank" rel="noopener">'
+            "ollama.com/download</a></div>"
+            f"{ram_line}</div>"
+        )
+    if not status.get("running"):
+        return (
+            '<div class="pl-runtime warn">'
+            '<div class="pl-runtime-title">Ollama is installed but not running.</div>'
+            '<code class="pl-cmd">ollama serve</code>'
+            f"{ram_line}</div>"
+        )
+    n = len(status.get("models", []))
+    noun = "model" if n == 1 else "models"
+    return (
+        '<div class="pl-runtime ok">'
+        f'<div class="pl-runtime-title">Ollama is running &middot; {n} {noun} installed</div>'
+        f"{ram_line}</div>"
+    )
+
+
+def _ollama_model_choices(status: dict, ram_gb: float) -> list[tuple[str, str]]:
+    """Installed models first (with size), then recommended-for-RAM pulls."""
+    installed = {m["name"] for m in status.get("models", [])}
+    choices: list[tuple[str, str]] = [
+        (f"{m['name']} · {m['size_gb']} GB", m["name"]) for m in status.get("models", [])
+    ]
+    for rec in discovery.recommend_ollama_models(ram_gb):
+        name = rec["name"]
+        if name not in installed:
+            choices.append((f"{name} — not installed · ollama pull {name}", name))
+    return choices
+
+
+def provider_panel_state(provider: str) -> dict:
+    """Compute the full Instrument-panel state for a provider.
+
+    Returns a dict with keys: is_cloud, key_saved, key_hint, models,
+    model_default, ollama_html, error.
+    """
+    if provider == "ollama":
+        status = discovery.ollama_status()
+        ram_gb = discovery.system_ram_gb()
+        choices = _ollama_model_choices(status, ram_gb)
+        installed = [m["name"] for m in status.get("models", [])]
+        prefers_qwen = "qwen2.5:7b" in installed or not installed
+        default = "qwen2.5:7b" if prefers_qwen else installed[0]
+        return {
+            "is_cloud": False,
+            "key_saved": False,
+            "key_hint": "",
+            "models": choices,
+            "model_default": default,
+            "ollama_html": _ollama_runtime_html(status, ram_gb),
+            "error": None,
+        }
+
+    key = keys.get_key(provider)
+    key_saved = bool(key)
+    key_hint = ""
+    if key_saved:
+        mask = _key_mask(provider) or (key[:4] + "..." if key else "")
+        key_hint = f"{mask} &middot; {_KEY_SAVED_NOTE}"
+
+    if provider == "openrouter" or key_saved:
+        models, error = discovery.list_models_safe(provider, api_key=key)
+    else:
+        models, error = list(discovery.STATIC_FALLBACK_MODELS.get(provider, [])), None
+
+    return {
+        "is_cloud": True,
+        "key_saved": key_saved,
+        "key_hint": key_hint,
+        "models": models,
+        "model_default": _model_default(provider, models),
+        "ollama_html": None,
+        "error": error,
+    }
+
+
+def save_key_action(provider: str, key: str) -> tuple[str, list, str]:
+    """Save an API key, then load models. Returns (status_html, models, default)."""
+    key = (key or "").strip()
+    if not key:
+        return (_status_html("Enter an API key before saving.", "error"), [], "")
+    keys.save_key(provider, key)
+    models, err = discovery.list_models_safe(provider, api_key=key)
+    default = _model_default(provider, models)
+    if err:
+        msg = f"{_KEY_SAVED_NOTE}. Model discovery failed ({err}); showing fallback list."
+        return (_status_html(msg, "error"), models, default)
+    msg = f"{_KEY_SAVED_NOTE}. Loaded {len(models)} models."
+    return (_status_html(msg, "ok"), models, default)
+
+
+def load_models_action(provider: str) -> tuple[str, list, str]:
+    """Refresh the model list for a provider. Returns (status_html, models, default)."""
+    if provider == "ollama":
+        state = provider_panel_state(provider)
+        n = len(state["models"])
+        return (
+            _status_html(f"Found {n} local model option(s).", "ok"),
+            state["models"],
+            state["model_default"],
+        )
+    models, err = discovery.list_models_safe(provider, api_key=keys.get_key(provider))
+    default = _model_default(provider, models)
+    if err:
+        return (
+            _status_html(f"Could not load models ({err}); showing fallback list.", "error"),
+            models,
+            default,
+        )
+    return (_status_html(f"Loaded {len(models)} models.", "ok"), models, default)
 
 
 # ---------------------------------------------------------------------------
@@ -227,34 +394,85 @@ footer { display: none !important; }
 }
 .pl-eyebrow-gap { margin-top: 18px; }
 
-/* ── File upload zone ───────────────────────────────────────────────────── */
-.pl-file input[type="file"],
-.pl-file .wrap,
-.pl-file .file-preview,
-[data-testid="file"] {
-  border: 1.5px dashed var(--pl-border-2) !important;
+/* ── File upload zone ───────────────────────────────────────────────────────
+   Gradio 6: the .pl-file block itself carries inline border-style
+   (dashed when empty, solid when a file is selected). Set only
+   border-width/-color so the inline dashed/solid switch keeps working. */
+.pl-file, .pl-file.block {
+  width: 100% !important;
+  max-width: 100% !important;
+  border-width: 1.5px !important;
+  border-color: var(--pl-border-2) !important;
   background: var(--pl-surface-2) !important;
   border-radius: var(--pl-radius) !important;
+  box-shadow: none !important;
   color: var(--pl-muted) !important;
   transition: border-color 160ms ease;
 }
-.pl-file:hover input[type="file"],
-.pl-file:hover .wrap,
-.pl-file:hover [data-testid="file"] {
-  border-color: var(--pl-hema) !important;
+.pl-file:hover { border-color: var(--pl-hema) !important; }
+/* .block's `border: solid !important` beats Gradio's inline dashed/solid
+   switch, so re-derive the style from the presence of a file preview. */
+.pl-file:not(:has(.file-preview-holder)) { border-style: dashed !important; }
+.pl-file:has(.file-preview-holder) { border-style: solid !important; }
+/* Empty state: drop-zone button fills the card */
+.pl-file button[aria-label="Click to upload or drop files"] {
+  width: 100% !important;
+  background: transparent !important;
+  color: var(--pl-muted) !important;
 }
-/* Drop zone spans the full card width */
-.pl-file,
-.pl-file > div,
-.pl-file .wrap,
-.pl-file .file-preview,
-.pl-file [data-testid="file"],
-.pl-file [data-testid="file-upload"],
-.pl-file .upload-container,
-.pl-file button {
+/* Filled state: compact file row card */
+.pl-file .file-preview-holder {
+  min-height: 56px !important;
+  padding: 12px 14px !important;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.pl-file table.file-preview {
   width: 100% !important;
   max-width: 100% !important;
+  table-layout: fixed;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border: none !important;
+  background: transparent !important;
 }
+.pl-file .file-preview td {
+  padding: 2px 4px !important;
+  border: none !important;
+  font-size: 13px !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif !important;
+  color: var(--pl-ink) !important;
+  vertical-align: middle !important;
+}
+.pl-file .file-preview td.filename {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-weight: 500;
+}
+.pl-file .file-preview td.download {
+  width: 90px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+}
+.pl-file .file-preview td.download a {
+  color: var(--pl-muted) !important;
+  font-size: 12px !important;
+  text-decoration: none !important;
+}
+.pl-file .file-preview td.download a:hover { color: var(--pl-hema) !important; }
+/* Clear (×) button in the top-right panel */
+.pl-file .icon-button-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.pl-file .icon-button-wrapper .icon-button {
+  color: var(--pl-muted) !important;
+  border-radius: 6px !important;
+}
+.pl-file .icon-button-wrapper .icon-button:hover { color: var(--pl-eosin) !important; }
 
 /* ── Field labels: flat, not pill chips ─────────────────────────────────── */
 span[data-testid="block-info"],
@@ -320,6 +538,56 @@ button.primary {
   margin: 8px 0 0 0;
   text-align: center;
   font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+
+/* ── Provider setup panel (API key / Local runtime) ─────────────────────── */
+.pl-setup, .pl-setup.block {
+  background: var(--pl-surface-2) !important;
+  border: 1px solid var(--pl-border) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  padding: 12px 14px !important;
+  margin-top: 8px !important;
+}
+.pl-setup .block, .pl-setup .form, .pl-setup .gap {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.pl-setup input {
+  background: var(--pl-surface) !important;
+}
+.pl-key-hint {
+  font-size: 12px !important;
+  color: var(--pl-muted) !important;
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+.pl-key-hint code {
+  font-size: 11px !important;
+}
+.pl-runtime {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--pl-ink);
+  font-family: 'Instrument Sans', system-ui, sans-serif;
+}
+.pl-runtime-title { font-weight: 600; font-size: 13px; }
+.pl-runtime.ok .pl-runtime-title { color: var(--pl-teal); }
+.pl-runtime.warn .pl-runtime-title { color: var(--pl-amber); }
+.pl-runtime-ram { font-size: 12px; color: var(--pl-muted); }
+.pl-runtime a { color: var(--pl-hema); }
+.pl-cmd {
+  display: block;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+  font-size: 12px !important;
+  background: var(--pl-surface) !important;
+  border: 1px solid var(--pl-border) !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  color: var(--pl-ink) !important;
+  width: fit-content;
 }
 
 /* ── Refresh button (secondary) ─────────────────────────────────────────── */
@@ -697,17 +965,59 @@ def build_app():
                     '<p class="pl-eyebrow pl-eyebrow-gap">Instrument</p>',
                     elem_classes=["pl-flat"],
                 )
+                try:
+                    _init = provider_panel_state("ollama")
+                except Exception:
+                    _init = {
+                        "is_cloud": False,
+                        "key_saved": False,
+                        "key_hint": "",
+                        "models": [],
+                        "model_default": "qwen2.5:7b",
+                        "ollama_html": "",
+                        "error": None,
+                    }
+
                 provider = gr.Dropdown(
-                    choices=list(_providers.SUPPORTED_PROVIDERS),
+                    choices=[p for p in _providers.SUPPORTED_PROVIDERS if p != "fake"],
                     value="ollama",
                     label="Provider",
                     info="ollama runs locally · cloud providers use LiteLLM",
                 )
-                model = gr.Textbox(
-                    value="qwen2.5:7b",
+                with gr.Column(visible=False, elem_classes=["pl-setup"]) as key_group:
+                    key_hint_html = gr.HTML("", elem_classes=["pl-flat", "pl-key-hint"])
+                    api_key_box = gr.Textbox(
+                        type="password",
+                        label="API key",
+                        placeholder="sk-...",
+                    )
+                    save_key_btn = gr.Button(
+                        "Save key",
+                        variant="secondary",
+                        elem_classes=["pl-refresh"],
+                    )
+                with gr.Column(visible=True, elem_classes=["pl-setup"]) as ollama_group:
+                    ollama_runtime_html = gr.HTML(
+                        _init["ollama_html"] or "",
+                        elem_classes=["pl-flat"],
+                    )
+                    ollama_refresh_btn = gr.Button(
+                        "Refresh",
+                        variant="secondary",
+                        elem_classes=["pl-refresh"],
+                    )
+                model = gr.Dropdown(
+                    choices=_init["models"] or [_init["model_default"]],
+                    value=_init["model_default"],
+                    allow_custom_value=True,
                     label="Model",
-                    placeholder="qwen2.5:7b, openrouter/…, gpt-4o, …",
                 )
+                load_models_btn = gr.Button(
+                    "Load models",
+                    variant="secondary",
+                    elem_classes=["pl-refresh"],
+                )
+                panel_status = gr.HTML("", elem_classes=["pl-flat"])
                 run_btn = gr.Button(
                     "Run review",
                     elem_classes=["pl-run"],
@@ -807,6 +1117,74 @@ def build_app():
                 _sessions_html(),
                 gr.update(interactive=True),
             )
+
+        # ── Provider setup panel handlers (thin wrappers over pure funcs) ──
+        def _on_provider_change(provider_val):
+            try:
+                state = provider_panel_state(provider_val)
+            except Exception as exc:  # pragma: no cover — defensive
+                state = {
+                    "is_cloud": provider_val != "ollama",
+                    "key_saved": False,
+                    "key_hint": "",
+                    "models": [],
+                    "model_default": _MODEL_DEFAULTS.get(provider_val, ""),
+                    "ollama_html": "",
+                    "error": str(exc),
+                }
+            mask = _key_mask(provider_val) if state["key_saved"] else ""
+            return (
+                gr.update(visible=state["is_cloud"]),
+                gr.update(visible=not state["is_cloud"]),
+                gr.update(value="", placeholder=mask or "sk-..."),
+                f'<div class="pl-key-hint">{state["key_hint"]}</div>' if state["key_hint"] else "",
+                state["ollama_html"] or "",
+                gr.update(
+                    choices=state["models"] or [state["model_default"]],
+                    value=state["model_default"],
+                ),
+                _status_html(state["error"], "error") if state["error"] else "",
+            )
+
+        _panel_outputs = [
+            key_group,
+            ollama_group,
+            api_key_box,
+            key_hint_html,
+            ollama_runtime_html,
+            model,
+            panel_status,
+        ]
+        provider.change(fn=_on_provider_change, inputs=provider, outputs=_panel_outputs)
+        ollama_refresh_btn.click(fn=_on_provider_change, inputs=provider, outputs=_panel_outputs)
+
+        def _on_save_key(provider_val, key_val):
+            status_msg, models, default = save_key_action(provider_val, key_val)
+            if not models:
+                return status_msg, gr.update(), gr.update(), gr.update()
+            hint = f'<div class="pl-key-hint">{_key_mask(provider_val)} &middot; {_KEY_SAVED_NOTE}</div>'
+            return (
+                status_msg,
+                gr.update(choices=models, value=default),
+                gr.update(value="", placeholder=_key_mask(provider_val) or "sk-..."),
+                hint,
+            )
+
+        save_key_btn.click(
+            fn=_on_save_key,
+            inputs=[provider, api_key_box],
+            outputs=[panel_status, model, api_key_box, key_hint_html],
+        )
+
+        def _on_load_models(provider_val):
+            status_msg, models, default = load_models_action(provider_val)
+            return status_msg, gr.update(choices=models or [default], value=default)
+
+        load_models_btn.click(
+            fn=_on_load_models,
+            inputs=provider,
+            outputs=[panel_status, model],
+        )
 
         run_btn.click(
             fn=_on_click,
