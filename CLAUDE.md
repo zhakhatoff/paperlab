@@ -25,6 +25,8 @@ src/paperlab/
     litellm_provider.py   Real provider — lazy imports litellm.acompletion
     fake.py               FakeProvider — records calls, prefix-matched responses, JSON echo default
     factory.py            make_provider(name) + SUPPORTED_PROVIDERS tuple
+    keys.py               API key vault: ~/.paperlab/keys.toml (chmod 600), env vars win
+    discovery.py          Model discovery: ollama_status, list_models(_safe), RAM-based recommendations
   ingest/
     pdf.py                extract_text(path, converter=None) → IngestedPaper; docling lazy import
   agents/

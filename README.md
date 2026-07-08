@@ -108,6 +108,8 @@ paperlab uses [LiteLLM](https://github.com/BerriAI/litellm) under the hood. Supp
 
 Switch globally with `paperlab config set provider <name>` or per invocation with `--provider`.
 
+**API keys.** The web dashboard (`paperlab web`) lets you pick a provider, save its API key, and browse available models. Keys are stored locally in `~/.paperlab/keys.toml` (file mode 600, never leaves your machine); environment variables take precedence over the stored file. For Ollama the dashboard detects whether it is installed and running, lists installed models with sizes, and recommends models that fit your RAM.
+
 ### Config
 
 ```bash
