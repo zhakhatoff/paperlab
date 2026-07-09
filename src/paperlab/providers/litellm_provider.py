@@ -2,6 +2,23 @@ from __future__ import annotations
 
 from .base import LLMProvider, ProviderError
 
+# LiteLLM routes by model-string prefix; openai/custom accept bare names.
+_LITELLM_PREFIX = {
+    "ollama": "ollama",
+    "openrouter": "openrouter",
+    "groq": "groq",
+    "gemini": "gemini",
+    "together": "together_ai",
+    "anthropic": "anthropic",
+}
+
+
+def litellm_model(provider_name: str | None, model: str) -> str:
+    prefix = _LITELLM_PREFIX.get(provider_name or "")
+    if not prefix or model.startswith(f"{prefix}/"):
+        return model
+    return f"{prefix}/{model}"
+
 
 class LiteLLMProvider(LLMProvider):
     def __init__(self, provider_name: str | None = None) -> None:
@@ -23,7 +40,7 @@ class LiteLLMProvider(LLMProvider):
 
         try:
             response = await litellm.acompletion(
-                model=model,
+                model=litellm_model(self._provider_name, model),
                 messages=[
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
