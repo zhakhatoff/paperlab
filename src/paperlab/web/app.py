@@ -7,6 +7,7 @@ import json
 from html import escape
 from types import SimpleNamespace
 
+from paperlab.agents import AGENT_ORDER
 from paperlab.ingest import extract_text
 from paperlab.providers import discovery, keys
 from paperlab.providers.factory import make_provider
@@ -99,17 +100,23 @@ def _sessions_html(limit: int = 25) -> str:
 
 
 def _model_default(provider: str, models: list) -> str:
-    """Pick a sensible default model for a provider."""
+    """Pick a sensible default model for a provider.
+
+    Prefer the provider's preset if it appears in *models*. Otherwise fall
+    back to the first available model. When *models* is empty, return the
+    preset (or an empty string) so the UI still shows something usable.
+    """
     preset = _MODEL_DEFAULTS.get(provider)
-    if preset:
+
+    def _value(m):
+        return m[1] if isinstance(m, tuple) else m
+
+    values = [_value(m) for m in models]
+    if preset and preset in values:
         return preset
-    fallback = discovery.STATIC_FALLBACK_MODELS.get(provider, [])
-    if fallback:
-        return fallback[0]
-    if models:
-        first = models[0]
-        return first[1] if isinstance(first, tuple) else first
-    return ""
+    if values:
+        return values[0]
+    return preset or ""
 
 
 def _key_mask(provider: str) -> str:
@@ -145,15 +152,36 @@ def _ollama_runtime_html(status: dict, ram_gb: float) -> str:
     )
 
 
+def _ollama_base_tag(name: str) -> str:
+    """Normalise an ollama tag down to ``family:base`` for matching.
+
+    Ollama tags come as ``family:variant``. The variant may itself be a
+    dashed compound like ``7b-instruct-q4_K_M``. To match a recommended
+    tag against a locally installed derivative we compare the family plus
+    the first segment of the variant.
+    """
+    if ":" not in name:
+        return name
+    family, variant = name.split(":", 1)
+    base = variant.split("-", 1)[0]
+    return f"{family}:{base}"
+
+
 def _ollama_model_choices(status: dict, ram_gb: float) -> list[tuple[str, str]]:
-    """Installed models first (with size), then recommended-for-RAM pulls."""
-    installed = {m["name"] for m in status.get("models", [])}
+    """Installed models first (with size), then recommended-for-RAM pulls.
+
+    A recommended pull is suppressed if any installed model shares the same
+    base tag (family + base variant), so e.g. ``qwen2.5:7b-instruct-q4_K_M``
+    counts as having ``qwen2.5:7b`` installed.
+    """
+    installed_models = status.get("models", [])
+    installed_bases = {_ollama_base_tag(m["name"]) for m in installed_models}
     choices: list[tuple[str, str]] = [
-        (f"{m['name']} · {m['size_gb']} GB", m["name"]) for m in status.get("models", [])
+        (f"{m['name']} · {m['size_gb']} GB", m["name"]) for m in installed_models
     ]
     for rec in discovery.recommend_ollama_models(ram_gb):
         name = rec["name"]
-        if name not in installed:
+        if _ollama_base_tag(name) not in installed_bases:
             choices.append((f"{name} — not installed · ollama pull {name}", name))
     return choices
 
@@ -887,12 +915,10 @@ _AGENT_LABELS: dict[str, str] = {
     "contextualizer": "Contextualizer",
 }
 
-_AGENT_ORDER = ["summarizer", "methodologist", "critic", "contextualizer"]
-
 
 def _agents_html(states: dict[str, str]) -> str:
     cards = []
-    for key in _AGENT_ORDER:
+    for key in AGENT_ORDER:
         state = states.get(key, "idle")
         label = _AGENT_LABELS[key]
         role = _AGENT_ROLES[key]
@@ -922,6 +948,14 @@ def build_app():
     import gradio as gr
 
     import paperlab.providers as _providers
+    from paperlab.cli.config import load_config
+
+    try:
+        _cfg = load_config()
+    except Exception:
+        from paperlab.cli.config import PaperlabConfig
+
+        _cfg = PaperlabConfig()
 
     theme = gr.themes.Soft(
         primary_hue=gr.themes.colors.violet,
@@ -956,39 +990,46 @@ def build_app():
                 )
                 mode = gr.Radio(
                     choices=["rigorous", "learning"],
-                    value="rigorous",
+                    value=_cfg.mode if _cfg.mode in {"rigorous", "learning"} else "rigorous",
                     label="Mode",
                     info="rigorous — peer-review tone · learning — friendly",
                 )
                 lang = gr.Radio(
                     choices=["en", "ru"],
-                    value="en",
+                    value=_cfg.lang if _cfg.lang in {"en", "ru"} else "en",
                     label="Output language",
                 )
                 gr.HTML(
                     '<p class="pl-eyebrow pl-eyebrow-gap">Instrument</p>',
                     elem_classes=["pl-flat"],
                 )
+                _initial_provider = (
+                    _cfg.provider
+                    if _cfg.provider in _providers.SUPPORTED_PROVIDERS and _cfg.provider != "fake"
+                    else "ollama"
+                )
                 try:
-                    _init = provider_panel_state("ollama")
+                    _init = provider_panel_state(_initial_provider)
                 except Exception:
                     _init = {
-                        "is_cloud": False,
+                        "is_cloud": _initial_provider != "ollama",
                         "key_saved": False,
                         "key_hint": "",
                         "models": [],
-                        "model_default": "qwen2.5:7b",
+                        "model_default": _cfg.model or "qwen2.5:7b",
                         "ollama_html": "",
                         "error": None,
                     }
+                if _cfg.model:
+                    _init["model_default"] = _cfg.model
 
                 provider = gr.Dropdown(
                     choices=[p for p in _providers.SUPPORTED_PROVIDERS if p != "fake"],
-                    value="ollama",
+                    value=_initial_provider,
                     label="Provider",
                     info="ollama runs locally · cloud providers use LiteLLM",
                 )
-                with gr.Column(visible=False, elem_classes=["pl-setup"]) as key_group:
+                with gr.Column(visible=_init["is_cloud"], elem_classes=["pl-setup"]) as key_group:
                     key_hint_html = gr.HTML("", elem_classes=["pl-flat", "pl-key-hint"])
                     api_key_box = gr.Textbox(
                         type="password",
@@ -1000,7 +1041,9 @@ def build_app():
                         variant="secondary",
                         elem_classes=["pl-refresh"],
                     )
-                with gr.Column(visible=True, elem_classes=["pl-setup"]) as ollama_group:
+                with gr.Column(
+                    visible=not _init["is_cloud"], elem_classes=["pl-setup"]
+                ) as ollama_group:
                     ollama_runtime_html = gr.HTML(
                         _init["ollama_html"] or "",
                         elem_classes=["pl-flat"],
@@ -1097,7 +1140,7 @@ def build_app():
             yield (
                 _EMPTY_REPORT_HTML,
                 "",
-                _agents_html({k: "running" for k in _AGENT_ORDER}),
+                _agents_html({k: "running" for k in AGENT_ORDER}),
                 _status_html(
                     "Extracting PDF text and dispatching four agents in parallel…", "info"
                 ),
@@ -1111,7 +1154,7 @@ def build_app():
                 yield (
                     _EMPTY_REPORT_HTML,
                     "",
-                    _agents_html({k: "error" for k in _AGENT_ORDER}),
+                    _agents_html({k: "error" for k in AGENT_ORDER}),
                     _status_html(f"Review failed: {escape(str(exc))}", "error"),
                     _sessions_html(),
                     gr.update(interactive=True),

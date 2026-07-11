@@ -7,6 +7,7 @@ from paperlab.agents.methodologist import MethodologistAgent
 from paperlab.agents.summarizer import SummarizerAgent
 
 ALL_AGENTS = [SummarizerAgent, MethodologistAgent, CriticAgent, ContextualizerAgent]
+AGENT_ORDER: tuple[str, ...] = tuple(cls.NAME for cls in ALL_AGENTS)
 
 __all__ = [
     "Agent",
@@ -16,4 +17,5 @@ __all__ = [
     "CriticAgent",
     "ContextualizerAgent",
     "ALL_AGENTS",
+    "AGENT_ORDER",
 ]

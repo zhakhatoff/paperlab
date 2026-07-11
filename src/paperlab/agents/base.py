@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import ClassVar
 
 from pydantic import BaseModel
@@ -25,27 +24,35 @@ class AgentReport(BaseModel):
 def _parse_json(raw: str) -> tuple[dict, str | None]:
     """Try to parse *raw* as JSON.
 
-    First attempt: parse the whole string directly.
-    Second attempt: extract the first ``{...}`` block (greedy, DOTALL) and parse that.
-    Failure: return ``({}, error_message)``.
+    Uses ``json.JSONDecoder().raw_decode`` incrementally from every ``{`` or
+    ``[`` in the string until it finds a value that decodes cleanly. If the
+    decoded value is a list, it is wrapped as ``{"items": [...]}``. Returns
+    ``({}, error_message)`` if nothing decodes.
     """
-    # Direct parse
+    decoder = json.JSONDecoder()
+
+    # Direct parse first.
     try:
         obj = json.loads(raw)
         if isinstance(obj, dict):
             return obj, None
+        if isinstance(obj, list):
+            return {"items": obj}, None
     except json.JSONDecodeError:
         pass
 
-    # Extract first {...} block
-    match = re.search(r"\{.*\}", raw, re.DOTALL)
-    if match:
+    # Scan every candidate opener.
+    for i, ch in enumerate(raw):
+        if ch not in "{[":
+            continue
         try:
-            obj = json.loads(match.group())
-            if isinstance(obj, dict):
-                return obj, None
+            obj, _end = decoder.raw_decode(raw, i)
         except json.JSONDecodeError:
-            pass
+            continue
+        if isinstance(obj, dict):
+            return obj, None
+        if isinstance(obj, list):
+            return {"items": obj}, None
 
     return {}, "JSON parse error: could not extract a JSON object from raw response"
 

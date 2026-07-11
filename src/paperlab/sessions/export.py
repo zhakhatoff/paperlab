@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 
+from paperlab.agents import AGENT_ORDER
 from paperlab.orchestrator import ReviewReport
-
-_AGENT_ORDER = ["summarizer", "methodologist", "critic", "contextualizer"]
 
 
 def to_json(report: ReviewReport) -> str:
@@ -32,8 +31,8 @@ def to_markdown(report: ReviewReport) -> str:
         lines.append(f"> error: {report.error}")
         lines.append("")
 
-    agent_names = [n for n in _AGENT_ORDER if n in report.agents]
-    remaining = [n for n in report.agents if n not in _AGENT_ORDER]
+    agent_names = [n for n in AGENT_ORDER if n in report.agents]
+    remaining = [n for n in report.agents if n not in AGENT_ORDER]
     for name in agent_names + remaining:
         agent_report = report.agents[name]
         lines.append(f"## {name}")
@@ -54,7 +53,7 @@ def to_markdown(report: ReviewReport) -> str:
                         lines.append(f"- {item}")
                 else:
                     lines.append("```")
-                    lines.append(str(value))
+                    lines.append(json.dumps(value, ensure_ascii=False, indent=2))
                     lines.append("```")
                 lines.append("")
 

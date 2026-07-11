@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -12,7 +13,11 @@ from rich.table import Table
 
 from paperlab import __version__
 from paperlab.ingest import extract_text
-from paperlab.providers.factory import make_provider
+from paperlab.providers.factory import SUPPORTED_PROVIDERS, make_provider
+
+_CLOUD_PROVIDERS: frozenset[str] = frozenset(SUPPORTED_PROVIDERS) - {"ollama", "fake", "custom"}
+
+log = logging.getLogger("paperlab")
 
 # ---------------------------------------------------------------------------
 # Runtime shim — replace fields in tests to avoid real I/O.
@@ -39,6 +44,28 @@ config_app = typer.Typer(
 app.add_typer(config_app, name="config")
 
 console = Console()
+
+
+@app.callback()
+def _root(
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="Enable debug logging to stderr.",
+    ),
+) -> None:
+    """paperlab root callback — configures logging."""
+    level = logging.DEBUG if verbose else logging.WARNING
+    root = logging.getLogger()
+    # Reset handlers so repeated CLI invocations don't stack them (tests reuse the process).
+    for h in list(root.handlers):
+        root.removeHandler(h)
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    root.addHandler(handler)
+    root.setLevel(level)
+    logging.getLogger("paperlab").setLevel(level)
 
 
 # ---------------------------------------------------------------------------
@@ -85,10 +112,16 @@ def read(
     provider: str | None = typer.Option(None, help="Provider name"),
     format: str = typer.Option("markdown", help="markdown | json"),
     output: Path | None = typer.Option(None, help="Write report to file"),
+    skip_preflight: bool = typer.Option(
+        False,
+        "--skip-preflight",
+        help="Skip provider readiness checks (Ollama running / API key present).",
+    ),
 ) -> None:
     """Run the multi-agent review on a paper."""
     from paperlab.cli.config import load_config
     from paperlab.orchestrator import review
+    from paperlab.providers import discovery, keys
     from paperlab.sessions import save_report, to_json, to_markdown
 
     if format not in {"markdown", "json"}:
@@ -102,6 +135,32 @@ def read(
     effective_lang = lang or cfg.lang
     effective_model = model or cfg.model
     effective_provider = provider or cfg.provider
+
+    if not skip_preflight:
+        if effective_provider == "ollama":
+            status = discovery.ollama_status()
+            if not status.get("running"):
+                typer.echo(
+                    "Ollama is not running. Start it with: ollama serve",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+        elif effective_provider in _CLOUD_PROVIDERS:
+            if keys.get_key(effective_provider) is None:
+                typer.echo(
+                    f"No API key saved for {effective_provider}. "
+                    "Run: paperlab config set ...  or  paperlab web  to save it.",
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+
+    log.info(
+        "starting review, provider=%s model=%s mode=%s lang=%s",
+        effective_provider,
+        effective_model,
+        effective_mode,
+        effective_lang,
+    )
 
     provider_instance = _RUNTIME.make_provider(effective_provider)
     paper_obj = _RUNTIME.extract_text(paper)

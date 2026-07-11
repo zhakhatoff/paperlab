@@ -58,8 +58,9 @@ def extract_text(path: Path | str, converter=None) -> IngestedPaper:
         num_pages = len(result.pages)
 
     title: str | None = None
-    if hasattr(result.document, "title"):
-        title = result.document.title
+    raw_title = getattr(result.document, "title", None)
+    if raw_title is not None:
+        title = str(raw_title) or None
 
     return IngestedPaper(
         source_path=str(path),

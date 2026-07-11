@@ -194,6 +194,87 @@ def test_read_invalid_format_exits_nonzero(tmp_path, monkeypatch):
     assert result.exit_code != 0
 
 
+def test_read_preflight_ollama_not_running(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    monkeypatch.setattr(cli_main._RUNTIME, "extract_text", _fake_extract)
+    monkeypatch.setattr(cli_main._RUNTIME, "make_provider", _fake_make_provider)
+
+    from paperlab.providers import discovery
+
+    monkeypatch.setattr(
+        discovery,
+        "ollama_status",
+        lambda *a, **kw: {"running": False, "installed": True, "models": []},
+    )
+
+    paper = tmp_path / "paper.pdf"
+    paper.write_bytes(b"%PDF-1.4 fake")
+
+    result = runner.invoke(
+        app, ["read", str(paper), "--provider", "ollama", "--model", "qwen2.5:7b"]
+    )
+    assert result.exit_code == 1
+    assert "ollama serve" in (result.stderr or result.output).lower() or "Ollama" in (
+        result.stderr or result.output
+    )
+
+
+def test_read_preflight_skipped_with_flag(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    monkeypatch.setattr(cli_main._RUNTIME, "extract_text", _fake_extract)
+    monkeypatch.setattr(cli_main._RUNTIME, "make_provider", _fake_make_provider)
+
+    from paperlab.providers import discovery
+
+    monkeypatch.setattr(
+        discovery,
+        "ollama_status",
+        lambda *a, **kw: {"running": False, "installed": True, "models": []},
+    )
+
+    paper = tmp_path / "paper.pdf"
+    paper.write_bytes(b"%PDF-1.4 fake")
+
+    result = runner.invoke(
+        app,
+        [
+            "read",
+            str(paper),
+            "--provider",
+            "ollama",
+            "--model",
+            "qwen2.5:7b",
+            "--skip-preflight",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+
+def test_read_preflight_cloud_missing_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setattr(cli_main._RUNTIME, "extract_text", _fake_extract)
+    monkeypatch.setattr(cli_main._RUNTIME, "make_provider", _fake_make_provider)
+
+    paper = tmp_path / "paper.pdf"
+    paper.write_bytes(b"%PDF-1.4 fake")
+
+    result = runner.invoke(
+        app,
+        ["read", str(paper), "--provider", "anthropic", "--model", "claude-sonnet-4-5"],
+    )
+    assert result.exit_code == 1
+    combined = (result.stderr or "") + result.output
+    assert "anthropic" in combined
+    assert "paperlab" in combined
+
+
+def test_verbose_flag_works_on_version():
+    result = runner.invoke(app, ["--verbose", "version"])
+    assert result.exit_code == 0, result.output
+    assert "paperlab" in result.output
+
+
 def test_read_writes_output_file(tmp_path, monkeypatch):
     monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
     monkeypatch.setattr(cli_main._RUNTIME, "extract_text", _fake_extract)

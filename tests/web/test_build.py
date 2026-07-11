@@ -55,6 +55,67 @@ def test_build_app_returns_blocks_object(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
+def _fake_gradio_with_recorder():
+    """Return (fake_gradio, calls) where calls records Dropdown/Radio kwargs."""
+    calls: dict[str, list[dict]] = {"Dropdown": [], "Radio": []}
+
+    fake_blocks_instance = MagicMock()
+    fake_blocks_instance.__enter__ = MagicMock(return_value=fake_blocks_instance)
+    fake_blocks_instance.__exit__ = MagicMock(return_value=False)
+
+    def _dropdown(*args, **kwargs):
+        calls["Dropdown"].append(kwargs)
+        return MagicMock()
+
+    def _radio(*args, **kwargs):
+        calls["Radio"].append(kwargs)
+        return MagicMock()
+
+    fake_gradio = MagicMock()
+    fake_gradio.Blocks = MagicMock(return_value=fake_blocks_instance)
+    fake_gradio.File = MagicMock(return_value=MagicMock())
+    fake_gradio.Radio = _radio
+    fake_gradio.Textbox = MagicMock(return_value=MagicMock())
+    fake_gradio.Dropdown = _dropdown
+    fake_gradio.Button = MagicMock(return_value=MagicMock())
+    fake_gradio.Markdown = MagicMock(return_value=MagicMock())
+    fake_gradio.Code = MagicMock(return_value=MagicMock())
+    return fake_gradio, calls
+
+
+def test_build_app_uses_config_toml_for_initial_values(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    # Make sure a stray env var doesn't accidentally satisfy the cloud key preflight.
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    from paperlab.cli.config import PaperlabConfig, save_config
+
+    save_config(
+        PaperlabConfig(
+            provider="anthropic",
+            model="claude-sonnet-4-5",
+            mode="learning",
+            lang="ru",
+        )
+    )
+
+    fake_gradio, calls = _fake_gradio_with_recorder()
+    with patch.dict(sys.modules, {"gradio": fake_gradio}):
+        web_app.build_app()
+
+    # Provider dropdown is the first Dropdown created.
+    provider_kwargs = calls["Dropdown"][0]
+    assert provider_kwargs.get("value") == "anthropic"
+
+    # Model dropdown value comes from config.
+    model_kwargs = calls["Dropdown"][1]
+    assert model_kwargs.get("value") == "claude-sonnet-4-5"
+
+    # Radios: mode first, then lang.
+    assert calls["Radio"][0].get("value") == "learning"
+    assert calls["Radio"][1].get("value") == "ru"
+
+
 def test_launch_calls_app_launch(monkeypatch):
     mock_app = MagicMock()
     monkeypatch.setattr(web_app, "build_app", lambda: mock_app)

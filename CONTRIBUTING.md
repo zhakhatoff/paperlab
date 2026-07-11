@@ -12,10 +12,12 @@ Thanks for wanting to help. This project is built to serve students and research
 
 ## Development setup
 
+Requires Python 3.11 or 3.12. Python 3.14 is not supported (some transitive dependencies do not build on 3.14).
+
 ```bash
 git clone https://github.com/zhakhatoff/paperlab
 cd paperlab
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 pytest

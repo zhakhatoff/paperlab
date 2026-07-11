@@ -83,6 +83,9 @@ PIPX_DEFAULT_PYTHON=$(brew --prefix python@3.12)/bin/python3.12 pipx ensurepath
 | `--model` | any model string the provider accepts | from config |
 | `--format` | `markdown`, `json` | `markdown` |
 | `--output` | file path | stdout |
+| `--skip-preflight` | skip provider readiness checks | off |
+
+The global `--verbose` / `-v` flag turns on debug logging to stderr. Before starting a review paperlab runs a preflight check: for `ollama` — that the service is running; for cloud providers — that an API key is saved. If not, it prints a clear hint and exits without running the review. Use `--skip-preflight` to bypass.
 
 ```bash
 paperlab read paper.pdf --mode rigorous --lang en
@@ -193,20 +196,36 @@ PIPX_DEFAULT_PYTHON=$(brew --prefix python@3.12)/bin/python3.12 pipx ensurepath
 
 ### Использование
 
+| Команда | Что делает |
+|---|---|
+| `paperlab version` | Печатает установленную версию |
+| `paperlab init [--force]` | Создаёт `~/.paperlab/{config.toml, sessions/}` |
+| `paperlab read <paper.pdf>` | Запускает разбор четырьмя агентами (флаги ниже) |
+| `paperlab list` | Таблица прошлых разборов |
+| `paperlab show <session-id> [--format markdown\|json]` | Печатает прошлый разбор |
+| `paperlab config get <key>` | Читает `provider` / `model` / `mode` / `lang` / `extra.<k>` |
+| `paperlab config set <key> <value>` | Обновляет `config.toml` |
+| `paperlab web` | Запускает Gradio-дашборд |
+
+Флаги `paperlab read`:
+
+| Флаг | Значения | По умолчанию |
+|---|---|---|
+| `--mode` | `rigorous`, `learning` | из конфига |
+| `--lang` | `en`, `ru` | из конфига |
+| `--provider` | см. таблицу провайдеров | из конфига |
+| `--model` | любая строка, которую понимает провайдер | из конфига |
+| `--format` | `markdown`, `json` | `markdown` |
+| `--output` | путь к файлу | stdout |
+| `--skip-preflight` | пропустить проверку готовности провайдера | off |
+
 ```bash
 paperlab read paper.pdf --mode rigorous --lang ru
 paperlab read paper.pdf --mode learning --lang en --provider ollama --model qwen2.5:7b
-paperlab list                    # история разборов
-paperlab show <session-id>       # открыть прошлый разбор
-paperlab web                     # веб-интерфейс в браузере (фаза 8)
-```
-
-Формат вывода:
-
-```bash
-paperlab read paper.pdf --format markdown          # по умолчанию
 paperlab read paper.pdf --format json --output report.json
 ```
+
+Глобальный флаг `--verbose` (`-v`) включает подробный лог в stderr. Перед запуском разбора paperlab делает preflight-проверку: для `ollama` — что сервис запущен, для облачных провайдеров — что API-ключ сохранён; при отсутствии печатает понятную подсказку и выходит без прогона. Пропустить проверку можно флагом `--skip-preflight`.
 
 ### Провайдеры
 

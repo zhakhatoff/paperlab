@@ -2,30 +2,44 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import re
 from pathlib import Path
 
 from pydantic import BaseModel
 
+from paperlab.cli.config import default_home
 from paperlab.orchestrator import ReviewReport
+
+_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _validate_session_id(session_id: str) -> None:
+    if not isinstance(session_id, str) or not _SESSION_ID_RE.match(session_id):
+        raise ValueError("invalid session_id")
 
 
 def default_sessions_dir() -> Path:
-    home = os.environ.get("PAPERLAB_HOME")
-    if home:
-        return Path(home) / "sessions"
-    return Path.home() / ".paperlab" / "sessions"
+    return default_home() / "sessions"
 
 
 def save_report(report: ReviewReport, base_dir: Path | None = None) -> Path:
+    _validate_session_id(report.session_id)
     base_dir = base_dir or default_sessions_dir()
-    base_dir.mkdir(parents=True, exist_ok=True)
+    if not base_dir.exists():
+        base_dir.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(OSError):
+            base_dir.chmod(0o700)
     path = base_dir / f"{report.session_id}.jsonl"
-    path.write_text(
-        json.dumps(report.model_dump(mode="json"), ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    payload = json.dumps(report.model_dump(mode="json"), ensure_ascii=False) + "\n"
+    flags = os.O_CREAT | os.O_WRONLY | os.O_TRUNC
+    fd = os.open(path, flags, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(payload)
+    with contextlib.suppress(OSError):
+        os.chmod(path, 0o600)
     return path
 
 
@@ -58,13 +72,14 @@ def list_sessions(base_dir: Path | None = None) -> list[SessionSummary]:
                     title=paper.get("title"),
                 )
             )
-        except Exception:
+        except (json.JSONDecodeError, KeyError, IndexError, OSError):
             continue
     summaries.sort(key=lambda s: s.created_at, reverse=True)
     return summaries
 
 
 def load_report(session_id: str, base_dir: Path | None = None) -> ReviewReport:
+    _validate_session_id(session_id)
     base_dir = base_dir or default_sessions_dir()
     path = base_dir / f"{session_id}.jsonl"
     if not path.exists():

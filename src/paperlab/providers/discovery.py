@@ -119,7 +119,13 @@ def list_models(
     try:
         with cm as _client:
             if provider == "openrouter":
-                resp = _client.get("https://openrouter.ai/api/v1/models")
+                headers: dict[str, str] = {}
+                if api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                resp = _client.get(
+                    "https://openrouter.ai/api/v1/models",
+                    headers=headers,
+                )
                 _check_response(resp, provider)
                 return sorted(item["id"] for item in resp.json()["data"])
 

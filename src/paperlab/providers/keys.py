@@ -4,13 +4,8 @@ from __future__ import annotations
 
 import contextlib
 import os
-from pathlib import Path
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
-
 import tomllib
+from pathlib import Path
 
 import tomli_w
 
@@ -82,8 +77,8 @@ def delete_key(provider: str) -> bool:
 
 
 def _mask(key: str) -> str:
-    if len(key) <= 7:
-        return key[:4] + "..."
+    if len(key) < 12:
+        return "***"
     return key[:4] + "..." + key[-3:]
 
 
