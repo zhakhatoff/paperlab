@@ -65,3 +65,34 @@ def test_process_saves_session_file(tmp_path, monkeypatch):
 
     session_file = tmp_path / "sessions" / f"{session_id}.jsonl"
     assert session_file.exists(), f"session file not found: {session_file}"
+
+
+# ---------------------------------------------------------------------------
+# HTML escape in sessions table
+# ---------------------------------------------------------------------------
+
+
+def test_sessions_html_escapes_user_data(monkeypatch):
+    from paperlab.sessions.store import SessionSummary
+
+    xss = "<script>alert(1)</script>"
+
+    def _fake_list_sessions():
+        return [
+            SessionSummary(
+                session_id=xss,
+                created_at="2026-07-11",
+                mode="rigorous",
+                lang="en",
+                model=xss,
+                title=xss,
+            )
+        ]
+
+    import paperlab.sessions as sessions_pkg
+
+    monkeypatch.setattr(sessions_pkg, "list_sessions", _fake_list_sessions)
+
+    html = web_app._sessions_html()
+    assert "<script>alert(1)</script>" not in html
+    assert "&lt;script&gt;" in html

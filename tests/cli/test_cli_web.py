@@ -42,3 +42,14 @@ def test_web_command_respects_flags(monkeypatch):
     assert kwargs["server_port"] == 9000
     assert kwargs["share"] is True
     assert kwargs["inbrowser"] is True
+    assert "WARNING" in result.output
+
+
+def test_web_command_localhost_no_warning(monkeypatch):
+    fake_app = MagicMock()
+    monkeypatch.setattr(paperlab.web, "build_app", lambda: fake_app)
+
+    result = runner.invoke(app, ["web", "--no-browser"])
+
+    assert result.exit_code == 0, result.output
+    assert "WARNING" not in result.output

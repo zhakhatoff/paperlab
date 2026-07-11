@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from html import escape
 from types import SimpleNamespace
 
 from paperlab.ingest import extract_text
@@ -82,7 +83,7 @@ def _sessions_html(limit: int = 25) -> str:
         cells = []
         for i, cell in enumerate(row):
             cls = ' class="pl-mono"' if i == 0 else ""
-            cells.append(f"<td{cls}>{cell}</td>")
+            cells.append(f"<td{cls}>{escape(str(cell))}</td>")
         body_rows.append(f"<tr>{''.join(cells)}</tr>")
     return (
         '<div class="pl-sessions-wrap"><table class="pl-sessions-table">'
@@ -185,7 +186,7 @@ def provider_panel_state(provider: str) -> dict:
     key_hint = ""
     if key_saved:
         mask = _key_mask(provider) or (key[:4] + "..." if key else "")
-        key_hint = f"{mask} &middot; {_KEY_SAVED_NOTE}"
+        key_hint = f"{escape(mask)} &middot; {_KEY_SAVED_NOTE}"
 
     if provider == "openrouter" or key_saved:
         models, error = discovery.list_models_safe(provider, api_key=key)
@@ -212,7 +213,7 @@ def save_key_action(provider: str, key: str) -> tuple[str, list, str]:
     models, err = discovery.list_models_safe(provider, api_key=key)
     default = _model_default(provider, models)
     if err:
-        msg = f"{_KEY_SAVED_NOTE}. Model discovery failed ({err}); showing fallback list."
+        msg = f"{_KEY_SAVED_NOTE}. Model discovery failed ({escape(str(err))}); showing fallback list."
         return (_status_html(msg, "error"), models, default)
     msg = f"{_KEY_SAVED_NOTE}. Loaded {len(models)} models."
     return (_status_html(msg, "ok"), models, default)
@@ -232,7 +233,10 @@ def load_models_action(provider: str) -> tuple[str, list, str]:
     default = _model_default(provider, models)
     if err:
         return (
-            _status_html(f"Could not load models ({err}); showing fallback list.", "error"),
+            _status_html(
+                f"Could not load models ({escape(str(err))}); showing fallback list.",
+                "error",
+            ),
             models,
             default,
         )
@@ -1073,6 +1077,21 @@ def build_app():
                 )
                 return
 
+            # Preflight: cloud providers require a saved key or env var.
+            if provider_val not in {"ollama", "fake"} and keys.get_key(provider_val) is None:
+                yield (
+                    _EMPTY_REPORT_HTML,
+                    "",
+                    _agents_html({}),
+                    _status_html(
+                        f"Save an API key for {escape(str(provider_val))} before running.",
+                        "error",
+                    ),
+                    _sessions_html(),
+                    gr.update(interactive=True),
+                )
+                return
+
             path = paper_file.name
             progress(0, desc="ingest")
             yield (
@@ -1086,7 +1105,18 @@ def build_app():
                 gr.update(interactive=False),
             )
 
-            md, js = process(path, mode_val, lang_val, model_val, provider_val)
+            try:
+                md, js = process(path, mode_val, lang_val, model_val, provider_val)
+            except Exception as exc:
+                yield (
+                    _EMPTY_REPORT_HTML,
+                    "",
+                    _agents_html({k: "error" for k in _AGENT_ORDER}),
+                    _status_html(f"Review failed: {escape(str(exc))}", "error"),
+                    _sessions_html(),
+                    gr.update(interactive=True),
+                )
+                return
 
             try:
                 parsed = json.loads(js)
@@ -1097,12 +1127,12 @@ def build_app():
                 agent_states[name] = "error" if rep.get("error") else "done"
 
             ok = agent_states and all(v == "done" for v in agent_states.values())
-            session_id = parsed.get("session_id", "?")
+            session_id = escape(str(parsed.get("session_id", "?")))
             if ok:
                 msg = f"Done. Session <code>{session_id}</code> saved to ~/.paperlab/sessions/."
                 kind = "ok"
             elif agent_states:
-                failed = [k for k, v in agent_states.items() if v == "error"]
+                failed = [escape(k) for k, v in agent_states.items() if v == "error"]
                 msg = f"Finished with issues in: {', '.join(failed)}. Session <code>{session_id}</code>."
                 kind = "error"
             else:
@@ -1143,7 +1173,7 @@ def build_app():
                     choices=state["models"] or [state["model_default"]],
                     value=state["model_default"],
                 ),
-                _status_html(state["error"], "error") if state["error"] else "",
+                _status_html(escape(str(state["error"])), "error") if state["error"] else "",
             )
 
         _panel_outputs = [
@@ -1162,7 +1192,10 @@ def build_app():
             status_msg, models, default = save_key_action(provider_val, key_val)
             if not models:
                 return status_msg, gr.update(), gr.update(), gr.update()
-            hint = f'<div class="pl-key-hint">{_key_mask(provider_val)} &middot; {_KEY_SAVED_NOTE}</div>'
+            hint = (
+                f'<div class="pl-key-hint">{escape(_key_mask(provider_val))} '
+                f"&middot; {_KEY_SAVED_NOTE}</div>"
+            )
             return (
                 status_msg,
                 gr.update(choices=models, value=default),

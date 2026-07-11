@@ -91,6 +91,12 @@ def read(
     from paperlab.orchestrator import review
     from paperlab.sessions import save_report, to_json, to_markdown
 
+    if format not in {"markdown", "json"}:
+        raise typer.BadParameter(
+            f"--format must be 'markdown' or 'json', got {format!r}",
+            param_hint="--format",
+        )
+
     cfg = load_config()
     effective_mode = mode or cfg.mode
     effective_lang = lang or cfg.lang
@@ -111,7 +117,7 @@ def read(
     if output:
         output.write_text(content, encoding="utf-8")
 
-    print(f"session: {report.session_id}")
+    typer.echo(f"session: {report.session_id}", err=True)
 
 
 @app.command(name="list")
@@ -164,6 +170,12 @@ def web(
             err=True,
         )
         raise typer.Exit(code=1) from None
+
+    if host not in {"127.0.0.1", "localhost", "::1"} or share:
+        console.print(
+            "[bold red]WARNING[/]: exposing the dashboard beyond localhost has no auth; "
+            "anyone reaching this URL can read saved keys and trigger reviews."
+        )
 
     url = f"http://{host}:{port}"
     console.print(f"[green]paperlab web[/green] starting at [cyan]{url}[/cyan]")

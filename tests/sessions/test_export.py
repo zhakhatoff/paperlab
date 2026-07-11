@@ -106,3 +106,16 @@ def test_to_markdown_error_section():
     md = to_markdown(report)
     assert "error" in md
     assert "parse failed" in md
+
+
+def test_to_markdown_top_level_error_single_block():
+    report = _make_report()
+    for a in report.agents.values():
+        a.error = "unauthorized"
+        a.output = {}
+        a.raw = ""
+    report.error = "unauthorized"
+    md = to_markdown(report)
+    # Single top-level error block, agents show "— failed —" placeholder
+    assert md.count("unauthorized") == 1
+    assert "— failed —" in md

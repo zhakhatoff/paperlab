@@ -127,11 +127,12 @@ def test_read_with_fake_provider(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert "# paperlab review" in result.output
+    # session_id line goes to stderr — stdout stays clean for piping
+    assert "session:" not in result.stdout
 
-    lines = [ln for ln in result.output.strip().split("\n") if ln.strip()]
-    last_line = lines[-1]
-    assert last_line.startswith("session: "), f"last line was: {last_line!r}"
-    session_id = last_line[len("session: ") :].strip()
+    stderr_lines = [ln for ln in result.stderr.strip().split("\n") if ln.strip()]
+    session_line = next(ln for ln in stderr_lines if ln.startswith("session: "))
+    session_id = session_line[len("session: ") :].strip()
     assert re.fullmatch(r"[0-9a-f]{12}", session_id), f"unexpected session_id: {session_id!r}"
 
     session_file = tmp_path / "sessions" / f"{session_id}.jsonl"
@@ -168,13 +169,29 @@ def test_show_session(tmp_path, monkeypatch):
     )
     assert read_result.exit_code == 0, read_result.output
 
-    lines = [ln for ln in read_result.output.strip().split("\n") if ln.strip()]
-    session_id = lines[-1][len("session: ") :].strip()
+    stderr_lines = [ln for ln in read_result.stderr.strip().split("\n") if ln.strip()]
+    session_line = next(ln for ln in stderr_lines if ln.startswith("session: "))
+    session_id = session_line[len("session: ") :].strip()
 
     show_result = runner.invoke(app, ["show", session_id])
     assert show_result.exit_code == 0, show_result.output
     assert "# paperlab review" in show_result.output
     assert session_id in show_result.output
+
+
+def test_read_invalid_format_exits_nonzero(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    monkeypatch.setattr(cli_main._RUNTIME, "extract_text", _fake_extract)
+    monkeypatch.setattr(cli_main._RUNTIME, "make_provider", _fake_make_provider)
+
+    paper = tmp_path / "paper.pdf"
+    paper.write_bytes(b"%PDF-1.4 fake")
+
+    result = runner.invoke(
+        app,
+        ["read", str(paper), "--provider", "fake", "--model", "any", "--format", "yaml"],
+    )
+    assert result.exit_code != 0
 
 
 def test_read_writes_output_file(tmp_path, monkeypatch):

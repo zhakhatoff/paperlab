@@ -98,7 +98,7 @@ paperlab uses [LiteLLM](https://github.com/BerriAI/litellm) under the hood. Supp
 |---|---|---|---|
 | `ollama` | Local (default) | none | `qwen2.5:7b`, `llama3.2:3b` |
 | `openrouter` | Cloud | `OPENROUTER_API_KEY` | `openrouter/anthropic/claude-3.5-sonnet` |
-| `together` | Cloud | `TOGETHER_API_KEY` | `together_ai/meta-llama/Llama-3-70b-chat-hf` |
+| `together` | Cloud | `TOGETHERAI_API_KEY` | `together_ai/meta-llama/Llama-3-70b-chat-hf` |
 | `groq` | Cloud | `GROQ_API_KEY` | `groq/llama-3.1-70b-versatile` |
 | `gemini` | Cloud | `GEMINI_API_KEY` | `gemini/gemini-1.5-pro` |
 | `anthropic` | Cloud | `ANTHROPIC_API_KEY` | `claude-3-5-sonnet-20241022` |

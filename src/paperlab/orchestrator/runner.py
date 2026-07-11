@@ -21,6 +21,7 @@ class ReviewReport(BaseModel):
     session_id: str
     created_at: str  # ISO 8601 UTC
     agents: dict[str, AgentReport]
+    error: str | None = None
 
 
 async def review(
@@ -56,6 +57,12 @@ async def review(
         else:
             agents[agent.NAME] = result
 
+    top_error: str | None = None
+    if agents:
+        errors = [a.error for a in agents.values()]
+        if all(errors) and len(set(errors)) == 1:
+            top_error = errors[0]
+
     return ReviewReport(
         paper=paper,
         mode=mode,
@@ -64,4 +71,5 @@ async def review(
         session_id=session_id,
         created_at=created_at,
         agents=agents,
+        error=top_error,
     )

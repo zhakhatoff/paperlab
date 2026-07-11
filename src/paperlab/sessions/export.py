@@ -28,12 +28,20 @@ def to_markdown(report: ReviewReport) -> str:
         lines.append(f"- title: {report.paper.title}")
     lines.append("")
 
+    if report.error:
+        lines.append(f"> error: {report.error}")
+        lines.append("")
+
     agent_names = [n for n in _AGENT_ORDER if n in report.agents]
     remaining = [n for n in report.agents if n not in _AGENT_ORDER]
     for name in agent_names + remaining:
         agent_report = report.agents[name]
         lines.append(f"## {name}")
         lines.append("")
+        if report.error:
+            lines.append("— failed —")
+            lines.append("")
+            continue
         if agent_report.error:
             lines.append(f"> error: {agent_report.error}")
             lines.append("")

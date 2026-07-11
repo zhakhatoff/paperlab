@@ -99,3 +99,35 @@ async def test_one_agent_fails(minimal_paper: IngestedPaper) -> None:
     for name, agent_report in report.agents.items():
         if name != "critic":
             assert agent_report.error is None, f"{name} should not have errored"
+
+    # no top-level error when only one agent fails
+    assert report.error is None
+
+
+class AllFailingProvider(FakeProvider):
+    async def complete(
+        self,
+        system: str,
+        user: str,
+        model: str,
+        temperature: float = 0.2,
+    ) -> str:
+        raise ProviderError("unauthorized")
+
+
+@pytest.mark.asyncio
+async def test_all_agents_fail_same_error_populates_top_level(
+    minimal_paper: IngestedPaper,
+) -> None:
+    provider = AllFailingProvider()
+    report = await review(
+        paper=minimal_paper,
+        provider=provider,
+        mode="rigorous",
+        lang="en",
+        model="test-model",
+    )
+
+    assert report.error == "unauthorized"
+    for agent_report in report.agents.values():
+        assert agent_report.error == "unauthorized"
