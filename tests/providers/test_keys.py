@@ -111,6 +111,22 @@ def test_apply_key_to_env_sets_env(tmp_path, monkeypatch):
     assert os.environ.get("OPENROUTER_API_KEY") == "sk-test-apply"
 
 
+def test_mask_short_key_is_generic_stars():
+    from paperlab.providers.keys import _mask
+
+    assert _mask("sk-abc") == "***"
+
+
+def test_mask_long_key_shows_edges():
+    from paperlab.providers.keys import _mask
+
+    key = "sk-1234567890abc"
+    m = _mask(key)
+    assert "sk-" in m
+    assert "abc" in m
+    assert len(m) < len(key)
+
+
 def test_apply_key_to_env_does_not_overwrite(tmp_path, monkeypatch):
     monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
     monkeypatch.setenv("OPENROUTER_API_KEY", "already-set")

@@ -143,6 +143,37 @@ def test_load_missing_session_raises(tmp_path):
         load_report("doesnotexist", base_dir=tmp_path)
 
 
+def test_load_report_rejects_bad_session_id(tmp_path):
+    with pytest.raises(ValueError):
+        load_report("../../etc/passwd", base_dir=tmp_path)
+
+
+def test_default_home_and_sessions_agree(monkeypatch, tmp_path):
+    from paperlab.cli.config import default_home
+
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    assert default_home() == tmp_path
+    assert default_sessions_dir() == tmp_path / "sessions"
+
+
+def test_save_report_file_mode_0600(tmp_path):
+    import stat
+
+    report = _make_report(session_id="modecheck")
+    path = save_report(report, base_dir=tmp_path)
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_list_sessions_skips_bad_jsonl(tmp_path):
+    report = _make_report(session_id="goodone")
+    save_report(report, base_dir=tmp_path)
+    (tmp_path / "bad.jsonl").write_text("not-json\n", encoding="utf-8")
+
+    result = list_sessions(base_dir=tmp_path)
+    ids = [s.session_id for s in result]
+    assert ids == ["goodone"]
+
+
 def test_session_summary_title(tmp_path):
     report = _make_report(session_id="titled", title="My Paper")
     save_report(report, base_dir=tmp_path)

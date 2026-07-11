@@ -108,6 +108,15 @@ def test_to_markdown_error_section():
     assert "parse failed" in md
 
 
+def test_to_markdown_renders_dict_values_as_json():
+    report = _make_report()
+    report.agents["summarizer"].output = {"nested": {"value": 3}}
+    md = to_markdown(report)
+    assert '"value": 3' in md
+    # A python repr like {'value': 3} would use single quotes and no colon-space.
+    assert "{'value': 3}" not in md
+
+
 def test_to_markdown_top_level_error_single_block():
     report = _make_report()
     for a in report.agents.values():

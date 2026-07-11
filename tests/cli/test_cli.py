@@ -194,6 +194,14 @@ def test_read_invalid_format_exits_nonzero(tmp_path, monkeypatch):
     assert result.exit_code != 0
 
 
+def test_show_missing_session_exits_nonzero(tmp_path, monkeypatch):
+    monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
+    result = runner.invoke(app, ["show", "nosuchsession"])
+    assert result.exit_code != 0
+    combined = (result.output + (result.stderr or "")).lower()
+    assert "not found" in combined or "does not exist" in combined
+
+
 def test_read_preflight_ollama_not_running(tmp_path, monkeypatch):
     monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
     monkeypatch.setattr(cli_main._RUNTIME, "extract_text", _fake_extract)

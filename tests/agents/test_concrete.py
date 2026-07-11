@@ -81,6 +81,22 @@ async def test_contextualizer_run_agent_name():
     assert report.agent_name == "contextualizer"
 
 
+# --- output/error contract with valid JSON ---
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "cls",
+    [SummarizerAgent, MethodologistAgent, CriticAgent, ContextualizerAgent],
+)
+async def test_agent_valid_json_gives_output_and_no_error(cls):
+    provider = FakeProvider(default=DEFAULT_JSON)
+    agent = cls(provider, mode="rigorous", lang="en", model="m")
+    report = await agent.run("paper")
+    assert report.output != {}
+    assert report.error is None
+
+
 # --- prompt is loaded (non-empty system) for methodologist/critic/contextualizer ---
 
 

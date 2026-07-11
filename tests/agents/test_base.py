@@ -68,6 +68,36 @@ async def test_run_prose_with_embedded_json():
 
 
 @pytest.mark.asyncio
+async def test_run_prefix_suffix_around_json():
+    provider = FakeProvider(default='Prefix {"claims":["a"]} suffix')
+    agent = SummarizerAgent(provider, mode="rigorous", lang="en", model="m")
+    report = await agent.run("SAMPLE")
+
+    assert report.output == {"claims": ["a"]}
+    assert report.error is None
+
+
+@pytest.mark.asyncio
+async def test_run_top_level_list_wrapped_as_items():
+    provider = FakeProvider(default='[{"c":1},{"c":2}]')
+    agent = SummarizerAgent(provider, mode="rigorous", lang="en", model="m")
+    report = await agent.run("SAMPLE")
+
+    assert report.output == {"items": [{"c": 1}, {"c": 2}]}
+    assert report.error is None
+
+
+@pytest.mark.asyncio
+async def test_run_no_json_returns_error():
+    provider = FakeProvider(default="no json here")
+    agent = SummarizerAgent(provider, mode="rigorous", lang="en", model="m")
+    report = await agent.run("SAMPLE")
+
+    assert report.output == {}
+    assert report.error
+
+
+@pytest.mark.asyncio
 async def test_run_raw_matches_provider_response():
     provider = FakeProvider(default=CLEAN_JSON)
     agent = SummarizerAgent(provider, mode="rigorous", lang="en", model="test-model")

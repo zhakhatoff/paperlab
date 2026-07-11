@@ -208,7 +208,11 @@ def show(
     """Show a past review session."""
     from paperlab.sessions import load_report, to_json, to_markdown
 
-    report = load_report(session_id)
+    try:
+        report = load_report(session_id)
+    except (FileNotFoundError, ValueError) as exc:
+        typer.echo(f"Session not found: {session_id} ({exc})", err=True)
+        raise typer.Exit(code=1) from None
     print(to_json(report) if format == "json" else to_markdown(report))
 
 

@@ -213,6 +213,86 @@ def test_discovery_error_scrubs_secrets_from_exception():
 # ---------------------------------------------------------------------------
 
 
+def test_list_models_openrouter_with_key_sends_auth():
+    from paperlab.providers.discovery import list_models
+
+    payload = {"data": [{"id": "z-model"}]}
+    client = _FakeClient({"openrouter.ai": _fake_response(200, payload)})
+
+    list_models("openrouter", api_key="sk-or-abc", client=client)
+    assert client.last_get_headers.get("Authorization") == "Bearer sk-or-abc"
+
+
+def test_list_models_openrouter_without_key_has_no_auth():
+    from paperlab.providers.discovery import list_models
+
+    payload = {"data": [{"id": "z-model"}]}
+    client = _FakeClient({"openrouter.ai": _fake_response(200, payload)})
+
+    list_models("openrouter", client=client)
+    assert "Authorization" not in (client.last_get_headers or {})
+
+
+def test_list_models_anthropic_url_and_headers():
+    from paperlab.providers.discovery import list_models
+
+    payload = {"data": [{"id": "claude-sonnet-4-5"}]}
+    client = _FakeClient({"api.anthropic.com": _fake_response(200, payload)})
+
+    list_models("anthropic", api_key="ak-1", client=client)
+    assert "api.anthropic.com" in client.last_get_url
+    assert client.last_get_headers.get("x-api-key") == "ak-1"
+    assert client.last_get_headers.get("anthropic-version") == "2023-06-01"
+
+
+def test_list_models_groq_url_and_bearer():
+    from paperlab.providers.discovery import list_models
+
+    payload = {"data": [{"id": "llama-3.3-70b-versatile"}]}
+    client = _FakeClient({"api.groq.com": _fake_response(200, payload)})
+
+    list_models("groq", api_key="gk-1", client=client)
+    assert "api.groq.com/openai/v1/models" in client.last_get_url
+    assert client.last_get_headers.get("Authorization") == "Bearer gk-1"
+
+
+def test_list_models_together_url_and_bearer():
+    from paperlab.providers.discovery import list_models
+
+    payload = {"data": [{"id": "meta-llama/Llama-3.3-70B-Instruct-Turbo"}]}
+    client = _FakeClient({"api.together.xyz": _fake_response(200, payload)})
+
+    list_models("together", api_key="tk-1", client=client)
+    assert "api.together.xyz/v1/models" in client.last_get_url
+    assert client.last_get_headers.get("Authorization") == "Bearer tk-1"
+
+
+def test_list_models_custom_uses_openai_base_url():
+    from paperlab.providers.discovery import list_models
+
+    payload = {"data": [{"id": "gpt-x"}]}
+    client = _FakeClient({"api.openai.com": _fake_response(200, payload)})
+
+    list_models("custom", api_key="ck-1", client=client)
+    assert "api.openai.com/v1/models" in client.last_get_url
+    assert client.last_get_headers.get("Authorization") == "Bearer ck-1"
+
+
+def test_list_models_ollama_uses_tags_endpoint():
+    from paperlab.providers.discovery import list_models
+
+    payload = {
+        "models": [
+            {"name": "qwen2.5:7b", "size": 4_500_000_000},
+        ]
+    }
+    client = _FakeClient({"/api/tags": _fake_response(200, payload)})
+
+    models = list_models("ollama", client=client)
+    assert models == ["qwen2.5:7b"]
+    assert "/api/tags" in client.last_get_url
+
+
 def test_list_models_safe_success():
     from paperlab.providers.discovery import list_models_safe
 
