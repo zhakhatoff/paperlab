@@ -5,7 +5,10 @@ from __future__ import annotations
 import platform
 import shutil
 import subprocess
+from contextlib import nullcontext
 from typing import Any
+
+from ._scrub import _scrub_secrets
 
 
 class MissingKeyError(Exception):
@@ -111,49 +114,56 @@ def list_models(
     if provider in _PROVIDERS_NEEDING_KEY and api_key is None:
         raise MissingKeyError(f"API key required for provider {provider!r}")
 
-    _client = client if client is not None else httpx.Client()
+    cm = nullcontext(client) if client is not None else httpx.Client()
 
     try:
-        if provider == "openrouter":
-            resp = _client.get("https://openrouter.ai/api/v1/models")
-            _check_response(resp, provider)
-            return sorted(item["id"] for item in resp.json()["data"])
+        with cm as _client:
+            if provider == "openrouter":
+                resp = _client.get("https://openrouter.ai/api/v1/models")
+                _check_response(resp, provider)
+                return sorted(item["id"] for item in resp.json()["data"])
 
-        if provider in ("openai", "groq", "together", "custom"):
-            base = _PROVIDER_BASE[provider]
-            resp = _client.get(
-                f"{base}/models",
-                headers={"Authorization": f"Bearer {api_key}"},
-            )
-            _check_response(resp, provider)
-            return sorted(item["id"] for item in resp.json()["data"])
+            if provider in ("openai", "groq", "together", "custom"):
+                base = _PROVIDER_BASE[provider]
+                resp = _client.get(
+                    f"{base}/models",
+                    headers={"Authorization": f"Bearer {api_key}"},
+                )
+                _check_response(resp, provider)
+                return sorted(item["id"] for item in resp.json()["data"])
 
-        if provider == "anthropic":
-            resp = _client.get(
-                "https://api.anthropic.com/v1/models",
-                headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                },
-            )
-            _check_response(resp, provider)
-            return sorted(item["id"] for item in resp.json()["data"])
+            if provider == "anthropic":
+                resp = _client.get(
+                    "https://api.anthropic.com/v1/models",
+                    headers={
+                        "x-api-key": api_key,
+                        "anthropic-version": "2023-06-01",
+                    },
+                )
+                _check_response(resp, provider)
+                return sorted(item["id"] for item in resp.json()["data"])
 
-        if provider == "gemini":
-            resp = _client.get(
-                f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}",
-            )
-            _check_response(resp, provider)
-            return sorted(m["name"].removeprefix("models/") for m in resp.json().get("models", []))
+            if provider == "gemini":
+                resp = _client.get(
+                    "https://generativelanguage.googleapis.com/v1beta/models",
+                    headers={"x-goog-api-key": api_key},
+                )
+                _check_response(resp, provider)
+                return sorted(
+                    m["name"].removeprefix("models/") for m in resp.json().get("models", [])
+                )
 
-        if provider == "ollama":
-            status = ollama_status(client=_client)
-            return [m["name"] for m in status["models"]]
+            if provider == "ollama":
+                status = ollama_status(client=_client)
+                return [m["name"] for m in status["models"]]
 
     except (MissingKeyError, DiscoveryError):
         raise
     except Exception as exc:
-        raise DiscoveryError(f"Discovery failed for {provider!r}: {exc}") from exc
+        msg = _scrub_secrets(str(exc))
+        raise DiscoveryError(
+            f"Discovery failed for {provider!r}: {type(exc).__name__}: {msg}"
+        ) from exc
 
     raise DiscoveryError(f"Unknown provider for discovery: {provider!r}")
 

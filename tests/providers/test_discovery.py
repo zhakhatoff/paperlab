@@ -181,6 +181,31 @@ def test_list_models_gemini_strips_prefix():
     assert "gemini-2.5-pro" in models
     assert "gemini-2.5-flash" in models
     assert all(not m.startswith("models/") for m in models)
+    # Key travels in header, not URL query
+    assert client.last_get_headers.get("x-goog-api-key") == "gemini-key"
+    assert "key=" not in client.last_get_url
+
+
+def test_discovery_error_scrubs_secrets_from_exception():
+    from paperlab.providers.discovery import DiscoveryError, list_models
+
+    secret = "sk-real-secret-abcdefghij"
+    google_key = "AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
+
+    class _BoomClient:
+        def get(self, url, **kwargs):
+            raise RuntimeError(
+                f"connect fail https://api.openai.com/v1/models?key={google_key} "
+                f"Authorization: Bearer {secret}"
+            )
+
+    with pytest.raises(DiscoveryError) as exc_info:
+        list_models("openai", api_key="sk-caller-key", client=_BoomClient())
+
+    msg = str(exc_info.value)
+    assert secret not in msg
+    assert google_key not in msg
+    assert "key=AIza" not in msg
 
 
 # ---------------------------------------------------------------------------

@@ -92,6 +92,7 @@ def _capture_fake_litellm(captured: dict, content="ok"):
         ("ollama", "qwen3:4b-instruct-2507-q4_K_M", "ollama/qwen3:4b-instruct-2507-q4_K_M"),
         ("ollama", "ollama/qwen2.5:7b", "ollama/qwen2.5:7b"),
         ("openrouter", "anthropic/claude-3.5-sonnet", "openrouter/anthropic/claude-3.5-sonnet"),
+        ("together", "together/foo", "together_ai/foo"),
         (
             "openrouter",
             "openrouter/anthropic/claude-3.5-sonnet",
@@ -120,3 +121,28 @@ def test_model_prefixed_for_litellm(monkeypatch, provider_name, model, expected)
     provider = LiteLLMProvider(provider_name=provider_name)
     asyncio.run(provider.complete("s", "u", model))
     assert captured["model"] == expected
+
+
+def test_complete_normalizes_none_content(monkeypatch):
+    fake_litellm = _make_fake_litellm(content=None)
+    monkeypatch.setitem(sys.modules, "litellm", fake_litellm)
+
+    from paperlab.providers import LiteLLMProvider
+
+    provider = LiteLLMProvider()
+    result = asyncio.run(provider.complete("s", "u", "m"))
+    assert result == ""
+
+
+def test_provider_error_scrubs_secrets(monkeypatch):
+    secret = "sk-real-secret-0123456789"
+    fake_litellm = _make_fake_litellm(raise_exc=RuntimeError(f"upstream 401: {secret}"))
+    monkeypatch.setitem(sys.modules, "litellm", fake_litellm)
+
+    from paperlab.providers import LiteLLMProvider, ProviderError
+
+    provider = LiteLLMProvider()
+    with pytest.raises(ProviderError) as exc_info:
+        asyncio.run(provider.complete("s", "u", "m"))
+    assert secret not in str(exc_info.value)
+    assert "RuntimeError" in str(exc_info.value)

@@ -25,6 +25,31 @@ def test_file_permissions(tmp_path, monkeypatch):
     assert mode == 0o600
 
 
+def test_parent_dir_created_with_0700(tmp_path, monkeypatch):
+    home = tmp_path / "fresh-home"
+    monkeypatch.setenv("PAPERLAB_HOME", str(home))
+
+    from paperlab.providers.keys import keys_path, save_key
+
+    save_key("openrouter", "sk-test-perm")
+    parent_mode = stat.S_IMODE(keys_path().parent.stat().st_mode)
+    assert parent_mode == 0o700
+
+
+def test_existing_parent_perms_preserved(tmp_path, monkeypatch):
+    home = tmp_path / "existing-home"
+    home.mkdir(mode=0o755)
+    # mkdir mode is affected by umask; force expected mode explicitly.
+    home.chmod(0o755)
+    monkeypatch.setenv("PAPERLAB_HOME", str(home))
+
+    from paperlab.providers.keys import keys_path, save_key
+
+    save_key("openrouter", "sk-test-preserve")
+    parent_mode = stat.S_IMODE(keys_path().parent.stat().st_mode)
+    assert parent_mode == 0o755
+
+
 def test_env_var_priority_over_file(tmp_path, monkeypatch):
     monkeypatch.setenv("PAPERLAB_HOME", str(tmp_path))
     monkeypatch.setenv("OPENROUTER_API_KEY", "env-key-override")

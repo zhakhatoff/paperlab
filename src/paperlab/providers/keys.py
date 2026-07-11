@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -40,10 +41,18 @@ def _load_keys() -> dict[str, str]:
 
 def _save_keys(data: dict[str, str]) -> Path:
     p = keys_path()
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "wb") as fh:
+    parent = p.parent
+    if not parent.exists():
+        parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.suppress(OSError):
+            parent.chmod(0o700)
+    if p.exists():
+        p.unlink()
+    flags = os.O_CREAT | os.O_WRONLY | os.O_TRUNC
+    fd = os.open(p, flags, 0o600)
+    with os.fdopen(fd, "wb") as fh:
         tomli_w.dump(data, fh)
-    p.chmod(0o600)
+    os.chmod(p, 0o600)
     return p
 
 
